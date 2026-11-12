@@ -9,6 +9,7 @@ import {
   defaultState,
   encodeHash,
   fromJsonFile,
+  sanitizeState,
   toJsonFile,
   type ExportFormat,
   type ExportSettings,
@@ -75,6 +76,24 @@ app.innerHTML = `
         <label><input type="checkbox" id="lock" /> Lock border (corners fixed, edges slide)</label>
         <label><input type="checkbox" id="showHandles" checked /> Show handles</label>
       </div>
+    </section>
+
+    <section>
+      <h2>Flip</h2>
+      <div class="row">
+        <button id="flipH" class="grow">Flip horizontal</button>
+        <button id="flipV" class="grow">Flip vertical</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>My presets</h2>
+      <div class="row">
+        <input type="text" id="presetName" placeholder="Preset name" maxlength="40" aria-label="Preset name" class="grow" />
+        <button id="savePreset">Save</button>
+      </div>
+      <div id="presetList"></div>
+      <p class="hint">Stored in this browser only. Use Save JSON or Copy link to share.</p>
     </section>
 
     <section>
@@ -388,6 +407,91 @@ function renderSwatches() {
   })
   swatchesEl.append(add, picker)
 }
+
+// ---- flip ---------------------------------------------------------------------
+
+function flip(horizontal: boolean) {
+  const old = state.points
+  state.points = old.map((_, index) => {
+    const col = index % 4
+    const row = Math.floor(index / 4)
+    const src = old[horizontal ? row * 4 + (3 - col) : (3 - row) * 4 + col]
+    return {
+      color: src.color,
+      x: horizontal ? 100 - src.x : src.x,
+      y: horizontal ? src.y : 100 - src.y,
+    }
+  })
+  onChange()
+}
+$('flipH').addEventListener('click', () => flip(true))
+$('flipV').addEventListener('click', () => flip(false))
+
+// ---- user presets (localStorage) ----------------------------------------------
+
+interface UserPreset {
+  name: string
+  state: GradientState
+}
+const PRESET_KEY = 'mgt-presets'
+function loadPresets(): UserPreset[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PRESET_KEY) ?? '[]') as { name: string; state: unknown }[]
+    return raw.flatMap((p) => {
+      const st = sanitizeState(p.state)
+      return st && typeof p.name === 'string' ? [{ name: p.name, state: st }] : []
+    })
+  } catch {
+    return []
+  }
+}
+function storePresets(list: UserPreset[]) {
+  try {
+    localStorage.setItem(PRESET_KEY, JSON.stringify(list))
+  } catch {
+    setStatus('Could not save: browser storage is blocked.', 'err')
+  }
+}
+function renderPresets() {
+  const list = loadPresets()
+  const el = $('presetList')
+  el.innerHTML = ''
+  list.forEach((preset, index) => {
+    const row = document.createElement('div')
+    row.className = 'row'
+    const apply = document.createElement('button')
+    apply.className = 'grow preset'
+    apply.textContent = preset.name
+    apply.title = 'Apply (keeps the current size)'
+    apply.addEventListener('click', () => {
+      const { width, height } = state
+      state = { ...structuredClone(preset.state), width, height }
+      selected = 0
+      onChange()
+    })
+    const del = document.createElement('button')
+    del.textContent = '×'
+    del.title = 'Delete preset'
+    del.setAttribute('aria-label', `Delete preset ${preset.name}`)
+    del.addEventListener('click', () => {
+      storePresets(loadPresets().filter((_, i) => i !== index))
+      renderPresets()
+    })
+    row.append(apply, del)
+    el.appendChild(row)
+  })
+}
+$('savePreset').addEventListener('click', () => {
+  const input = $<HTMLInputElement>('presetName')
+  const name = input.value.trim() || `Preset ${loadPresets().length + 1}`
+  const list = loadPresets().filter((p) => p.name !== name)
+  list.push({ name, state: structuredClone(state) })
+  storePresets(list)
+  input.value = ''
+  renderPresets()
+  setStatus(`Saved preset "${name}".`, 'ok')
+})
+renderPresets()
 
 // ---- panel: point, grain ------------------------------------------------------
 

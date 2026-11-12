@@ -337,3 +337,4 @@ select:focus-visible {
   }
 }
 .status a { color: inherit; text-decoration: underline; }
+.preset { text-align: left; overflow: hidden; text-overflow: ellipsis; }
