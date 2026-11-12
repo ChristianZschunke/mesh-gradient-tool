@@ -125,6 +125,25 @@ const canvas = $<HTMLCanvasElement>('canvas')
 const handlesEl = $('handles')
 const statusEl = $('status')
 
+let resultUrl = ''
+/** Keeps a manual download/open link, in case the browser blocks the automatic download */
+function showResult(blob: Blob, name: string) {
+  if (resultUrl) URL.revokeObjectURL(resultUrl)
+  resultUrl = URL.createObjectURL(blob)
+  statusEl.className = 'status ok'
+  statusEl.textContent = `${name} · ${(blob.size / 1024).toFixed(0)} KB. `
+  const save = document.createElement('a')
+  save.href = resultUrl
+  save.download = name
+  save.textContent = 'Save again'
+  const open = document.createElement('a')
+  open.href = resultUrl
+  open.target = '_blank'
+  open.rel = 'noopener'
+  open.textContent = 'Open in new tab'
+  statusEl.append(save, ' · ', open)
+}
+
 function setStatus(text: string, kind: 'ok' | 'err' | '' = '') {
   statusEl.textContent = text
   statusEl.className = 'status ' + kind
@@ -471,7 +490,7 @@ $('export').addEventListener('click', async () => {
     const { blob, width, height } = await renderToBlob(state, exportSettings)
     const name = `mesh-gradient-${width}x${height}-${state.seed}.${EXTENSION[exportSettings.format]}`
     download(blob, name)
-    setStatus(`${name} · ${(blob.size / 1024).toFixed(0)} KB`, 'ok')
+    showResult(blob, name)
   } catch (error) {
     setStatus((error as Error).message, 'err')
   } finally {
