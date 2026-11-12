@@ -467,7 +467,7 @@ $('export').addEventListener('click', async () => {
   setStatus('Rendering…')
   try {
     // let the status paint before the (blocking) render
-    await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)))
+    await new Promise((r) => setTimeout(r, 30))
     const { blob, width, height } = await renderToBlob(state, exportSettings)
     const name = `mesh-gradient-${width}x${height}-${state.seed}.${EXTENSION[exportSettings.format]}`
     download(blob, name)

@@ -46,7 +46,7 @@ export function defaultState(): GradientState {
     height: 1080,
     seed: 2024,
     lockBorder: true,
-    grain: 1,
+    grain: 1.5,
     paletteId: palette.id,
     palette: [...palette.colors],
     points: paletteLayout(palette) ?? randomPoints(palette.colors, 2024),
