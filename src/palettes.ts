@@ -25,31 +25,6 @@ export const PALETTES: Palette[] = [
       [0, 100, 3], [33, 100, 0], [66, 100, 0], [100, 100, 0],
     ],
   },
-  {
-    id: 'sunset',
-    name: 'Vivid Sunset',
-    colors: ['#FF432B', '#FF7A1A', '#FFA31B', '#FFC474', '#D92A1C'],
-  },
-  {
-    id: 'pastel',
-    name: 'Soft Pastel',
-    colors: ['#F6EEF4', '#FDE2E4', '#DFE7FD', '#E2F0CB', '#FFF1D0'],
-  },
-  {
-    id: 'ocean',
-    name: 'Deep Ocean',
-    colors: ['#0B1F3A', '#1E5AA8', '#3DA5D9', '#A7E6FF', '#12355F'],
-  },
-  {
-    id: 'aurora',
-    name: 'Aurora',
-    colors: ['#120B2E', '#5B2A9E', '#1FC8DB', '#B65CFF', '#2F3FB5'],
-  },
-  {
-    id: 'mono',
-    name: 'Soft Mono',
-    colors: ['#F2F2F5', '#D9D9E0', '#BFC0CB', '#FFFFFF', '#A5A7B5'],
-  },
 ]
 
 export const DEFAULT_PALETTE = PALETTES[0]

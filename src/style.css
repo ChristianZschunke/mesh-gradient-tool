@@ -397,3 +397,11 @@ select:focus-visible {
 .tile-del:focus-visible {
   display: block;
 }
+#gallery {
+  /* about 6 tiles (3 rows of 2), the rest scrolls */
+  max-height: 392px;
+  overflow-y: auto;
+  padding-right: 6px;
+  margin-right: -6px;
+  overscroll-behavior: contain;
+}
