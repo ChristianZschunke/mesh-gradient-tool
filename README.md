@@ -23,10 +23,18 @@ Needs Node 20+ (developed on Node 22) and a browser with WebGL2.
 - **Grain**: dither noise in 8-bit steps (default 1.5). It hides banding in 8-bit exports. Lossy formats smooth noise away, so raise it for WebP/JPG at lower quality; set it to 0 for a perfectly clean PNG.
 - **Export**: choose JPG / WebP / PNG, quality (not for PNG) and 1x / 2x. *Export image* renders a fresh frame at the target size on an offscreen canvas (the preview is never scaled up) and downloads it as `mesh-gradient-<w>x<h>-<seed>.<ext>`.
 - **Flip**: mirror the whole gradient (points and colours) horizontally or vertically.
-- **My presets**: type a name and press *Save* to keep the current gradient in this browser (localStorage). Click a preset to apply it (the current size is kept), `×` deletes it. Presets are per browser; share them via *Save JSON* or *Copy link*.
+- **Presets**: a gallery with thumbnails. *Palettes* are the built-in palettes (laid out with the current seed), *Team presets* come from `public/presets.json`, *My presets* are saved in this browser (name + *Save*; `×` on hover deletes). Applying a preset keeps your current size.
 - **Save & share**: *Copy link* copies the URL, which contains the whole gradient in its hash (`#g=...`). *Save JSON* / *Load JSON* store and restore the gradient plus export settings.
 
 The preview is rendered at the export size up to 2048 px on the long side; larger sizes are previewed downsampled (the gradient is resolution independent, only the grain pattern differs).
+
+## Shared team presets
+
+Team presets are the entries of `public/presets.json` (`{ "presets": [{ "name", "gradient" }] }`). To add one: build it in the tool, *Save* it under My presets, press *Export my presets*, and copy the entries you want from the downloaded `presets.json` into `public/presets.json`. Commit and push; the site updates itself.
+
+## Deploy (GitHub Pages)
+
+`.github/workflows/pages.yml` builds and publishes `dist/` on every push to `main`. In the GitHub repo: *Settings → Pages → Source: GitHub Actions*. `vite.config.ts` uses a relative base, so it works under `https://<org>.github.io/<repo>/`. For a private repo, Pages visibility depends on your GitHub plan (Enterprise Cloud can restrict it to org members).
 
 ## Add a palette
 

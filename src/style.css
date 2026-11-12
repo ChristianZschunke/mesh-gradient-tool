@@ -338,3 +338,62 @@ select:focus-visible {
 }
 .status a { color: inherit; text-decoration: underline; }
 .preset { text-align: left; overflow: hidden; text-overflow: ellipsis; }
+.group-title {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0 6px;
+}
+.group-title:first-child {
+  margin-top: 0;
+}
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.tile {
+  position: relative;
+  min-width: 0;
+}
+.tile-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  border-radius: 8px;
+}
+.tile-btn canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.tile-btn span {
+  display: block;
+  padding: 4px 8px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tile-btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.tile-del {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 1;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  border: 0;
+  display: none;
+}
+.tile:hover .tile-del,
+.tile-del:focus-visible {
+  display: block;
+}

@@ -53,8 +53,18 @@ app.innerHTML = `
     </section>
 
     <section>
+      <h2>Presets</h2>
+      <div id="gallery"></div>
+      <div class="row">
+        <input type="text" id="presetName" placeholder="Name for a new preset" maxlength="40" aria-label="Preset name" class="grow" />
+        <button id="savePreset">Save</button>
+      </div>
+      <div class="row"><button id="exportPresets" class="grow">Export my presets</button></div>
+      <p class="hint">My presets live in this browser only. Team presets come from the shared <code>presets.json</code>. Applying a preset keeps your size.</p>
+    </section>
+
+    <section>
       <h2>Colours</h2>
-      <div class="row"><select id="palette" aria-label="Palette"></select></div>
       <div class="swatches" id="swatches"></div>
       <div class="row">
         <label for="seed">Seed</label>
@@ -84,16 +94,6 @@ app.innerHTML = `
         <button id="flipH" class="grow">Flip horizontal</button>
         <button id="flipV" class="grow">Flip vertical</button>
       </div>
-    </section>
-
-    <section>
-      <h2>My presets</h2>
-      <div class="row">
-        <input type="text" id="presetName" placeholder="Preset name" maxlength="40" aria-label="Preset name" class="grow" />
-        <button id="savePreset">Save</button>
-      </div>
-      <div id="presetList"></div>
-      <p class="hint">Stored in this browser only. Use Save JSON or Copy link to share.</p>
     </section>
 
     <section>
@@ -326,16 +326,8 @@ function syncSize(updateInputs = true) {
 
 // ---- panel: colours -----------------------------------------------------------
 
-const paletteSelect = $<HTMLSelectElement>('palette')
 const swatchesEl = $('swatches')
 const seedInput = $<HTMLInputElement>('seed')
-
-function syncPaletteSelect() {
-  paletteSelect.innerHTML =
-    PALETTES.map((p) => `<option value="${p.id}">${p.name}</option>`).join('') +
-    '<option value="custom">Custom</option>'
-  paletteSelect.value = PALETTES.some((p) => p.id === state.paletteId) ? state.paletteId : 'custom'
-}
 
 function applyPalette(id: string) {
   const palette = PALETTES.find((p) => p.id === id)
@@ -345,7 +337,6 @@ function applyPalette(id: string) {
   state.points = paletteLayout(palette) ?? randomPoints(state.palette, state.seed)
   onChange()
 }
-paletteSelect.addEventListener('change', () => applyPalette(paletteSelect.value))
 
 $('randomize').addEventListener('click', () => {
   state.seed = newSeed()
@@ -427,60 +418,156 @@ function flip(horizontal: boolean) {
 $('flipH').addEventListener('click', () => flip(true))
 $('flipV').addEventListener('click', () => flip(false))
 
-// ---- user presets (localStorage) ----------------------------------------------
+// ---- preset gallery -----------------------------------------------------------
 
-interface UserPreset {
+interface Preset {
   name: string
   state: GradientState
 }
 const PRESET_KEY = 'mgt-presets'
-function loadPresets(): UserPreset[] {
+let sharedPresets: Preset[] = []
+
+function parsePresets(raw: unknown): Preset[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((p: { name?: unknown; state?: unknown; gradient?: unknown }) => {
+    const st = sanitizeState(p?.gradient ?? p?.state)
+    return st && typeof p.name === 'string' ? [{ name: p.name.slice(0, 40), state: st }] : []
+  })
+}
+function loadPresets(): Preset[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(PRESET_KEY) ?? '[]') as { name: string; state: unknown }[]
-    return raw.flatMap((p) => {
-      const st = sanitizeState(p.state)
-      return st && typeof p.name === 'string' ? [{ name: p.name, state: st }] : []
-    })
+    return parsePresets(JSON.parse(localStorage.getItem(PRESET_KEY) ?? '[]'))
   } catch {
     return []
   }
 }
-function storePresets(list: UserPreset[]) {
+function storePresets(list: Preset[]) {
   try {
     localStorage.setItem(PRESET_KEY, JSON.stringify(list))
   } catch {
     setStatus('Could not save: browser storage is blocked.', 'err')
   }
 }
-function renderPresets() {
-  const list = loadPresets()
-  const el = $('presetList')
-  el.innerHTML = ''
-  list.forEach((preset, index) => {
-    const row = document.createElement('div')
-    row.className = 'row'
-    const apply = document.createElement('button')
-    apply.className = 'grow preset'
-    apply.textContent = preset.name
-    apply.title = 'Apply (keeps the current size)'
-    apply.addEventListener('click', () => {
-      const { width, height } = state
-      state = { ...structuredClone(preset.state), width, height }
-      selected = 0
-      onChange()
-    })
+
+// One small offscreen renderer draws all thumbnails
+let thumbGl: HTMLCanvasElement | null = null
+let thumbRenderer: MeshRenderer | null | undefined
+function drawThumb(target: HTMLCanvasElement, st: GradientState) {
+  if (thumbRenderer === undefined) {
+    try {
+      thumbGl = document.createElement('canvas')
+      thumbGl.width = 240
+      thumbGl.height = 135
+      thumbRenderer = new MeshRenderer(thumbGl)
+    } catch {
+      thumbRenderer = null
+    }
+  }
+  if (!thumbRenderer || !thumbGl) return
+  target.width = 240
+  target.height = 135
+  thumbRenderer.render({ ...toMeshParams(st), grain: 0 })
+  // copied in the same task as the draw, so the WebGL buffer is still valid
+  target.getContext('2d')!.drawImage(thumbGl, 0, 0)
+}
+
+function applyPresetState(preset: GradientState) {
+  const { width, height } = state
+  state = { ...structuredClone(preset), width, height }
+  selected = 0
+  onChange()
+}
+
+function makeTile(
+  name: string,
+  st: GradientState,
+  active: boolean,
+  apply: () => void,
+  remove?: () => void,
+) {
+  const tile = document.createElement('div')
+  tile.className = 'tile'
+  const button = document.createElement('button')
+  button.className = 'tile-btn'
+  button.title = name
+  button.setAttribute('aria-pressed', String(active))
+  const thumb = document.createElement('canvas')
+  drawThumb(thumb, st)
+  const caption = document.createElement('span')
+  caption.textContent = name
+  button.append(thumb, caption)
+  button.addEventListener('click', apply)
+  tile.appendChild(button)
+  if (remove) {
     const del = document.createElement('button')
+    del.className = 'tile-del'
     del.textContent = '×'
     del.title = 'Delete preset'
-    del.setAttribute('aria-label', `Delete preset ${preset.name}`)
-    del.addEventListener('click', () => {
-      storePresets(loadPresets().filter((_, i) => i !== index))
-      renderPresets()
-    })
-    row.append(apply, del)
-    el.appendChild(row)
-  })
+    del.setAttribute('aria-label', `Delete preset ${name}`)
+    del.addEventListener('click', remove)
+    tile.appendChild(del)
+  }
+  return tile
 }
+
+function renderGallery() {
+  const root = $('gallery')
+  root.innerHTML = ''
+  const group = (title: string, tiles: HTMLElement[], empty = '') => {
+    const heading = document.createElement('div')
+    heading.className = 'group-title'
+    heading.textContent = title
+    const grid = document.createElement('div')
+    grid.className = 'gallery'
+    grid.append(...tiles)
+    root.append(heading, grid)
+    if (!tiles.length && empty) {
+      const note = document.createElement('p')
+      note.className = 'hint'
+      note.textContent = empty
+      root.appendChild(note)
+    }
+  }
+
+  group(
+    'Palettes',
+    PALETTES.map((palette) => {
+      const st: GradientState = {
+        ...state,
+        paletteId: palette.id,
+        palette: [...palette.colors],
+        points: paletteLayout(palette) ?? randomPoints(palette.colors, state.seed),
+      }
+      return makeTile(palette.name, st, state.paletteId === palette.id, () =>
+        applyPalette(palette.id),
+      )
+    }),
+  )
+  if (sharedPresets.length) {
+    group(
+      'Team presets',
+      sharedPresets.map((p) => makeTile(p.name, p.state, false, () => applyPresetState(p.state))),
+    )
+  }
+  const mine = loadPresets()
+  group(
+    'My presets',
+    mine.map((p, index) =>
+      makeTile(
+        p.name,
+        p.state,
+        false,
+        () => applyPresetState(p.state),
+        () => {
+          storePresets(loadPresets().filter((_, i) => i !== index))
+          renderGallery()
+        },
+      ),
+    ),
+    'Nothing saved yet.',
+  )
+}
+
 $('savePreset').addEventListener('click', () => {
   const input = $<HTMLInputElement>('presetName')
   const name = input.value.trim() || `Preset ${loadPresets().length + 1}`
@@ -488,10 +575,25 @@ $('savePreset').addEventListener('click', () => {
   list.push({ name, state: structuredClone(state) })
   storePresets(list)
   input.value = ''
-  renderPresets()
+  renderGallery()
   setStatus(`Saved preset "${name}".`, 'ok')
 })
-renderPresets()
+
+$('exportPresets').addEventListener('click', () => {
+  const mine = loadPresets()
+  if (!mine.length) return setStatus('You have no saved presets to export yet.', 'err')
+  const data = { presets: mine.map((p) => ({ name: p.name, gradient: p.state })) }
+  download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), 'presets.json')
+  setStatus('Exported. To share with the team, merge the entries into public/presets.json.', 'ok')
+})
+
+fetch(`${import.meta.env.BASE_URL}presets.json`)
+  .then((r) => (r.ok ? r.json() : null))
+  .then((data: { presets?: unknown } | null) => {
+    sharedPresets = parsePresets(data?.presets)
+    if (sharedPresets.length) renderGallery()
+  })
+  .catch(() => {})
 
 // ---- panel: point, grain ------------------------------------------------------
 
@@ -665,7 +767,7 @@ function onChange(
   syncHandles()
   syncPoint(pointInputs)
   if (palette) {
-    syncPaletteSelect()
+    renderGallery()
     renderSwatches()
   }
   seedInput.value = String(state.seed)

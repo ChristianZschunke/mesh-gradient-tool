@@ -1,0 +1,74 @@
+{
+  "presets": [
+    {
+      "name": "GALVANY Glow",
+      "gradient": {
+        "width": 1920, "height": 1080, "seed": 2024, "lockBorder": true, "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": ["#E8E8EE", "#FFC474", "#FF432B", "#FFD8DE", "#FFA31B"],
+        "points": [
+          { "x": 0, "y": 0, "color": "#E8E8EE" }, { "x": 33, "y": 0, "color": "#E8E8EE" }, { "x": 67, "y": 0, "color": "#FFC474" }, { "x": 100, "y": 0, "color": "#E8E8EE" },
+          { "x": 0, "y": 33, "color": "#E8E8EE" }, { "x": 33, "y": 33, "color": "#E8E8EE" }, { "x": 84, "y": 52, "color": "#FF432B" }, { "x": 100, "y": 30, "color": "#E8E8EE" },
+          { "x": 0, "y": 67, "color": "#E8E8EE" }, { "x": 33, "y": 70, "color": "#E8E8EE" }, { "x": 76, "y": 92, "color": "#E8E8EE" }, { "x": 100, "y": 74, "color": "#FFA31B" },
+          { "x": 0, "y": 100, "color": "#FFD8DE" }, { "x": 33, "y": 100, "color": "#E8E8EE" }, { "x": 66, "y": 100, "color": "#E8E8EE" }, { "x": 100, "y": 100, "color": "#E8E8EE" }
+        ]
+      }
+    },
+    {
+      "name": "GALVANY Glow mirrored",
+      "gradient": {
+        "width": 1920, "height": 1080, "seed": 2024, "lockBorder": true, "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": ["#E8E8EE", "#FFC474", "#FF432B", "#FFD8DE", "#FFA31B"],
+        "points": [
+          { "x": 0, "y": 0, "color": "#E8E8EE" }, { "x": 33, "y": 0, "color": "#FFC474" }, { "x": 67, "y": 0, "color": "#E8E8EE" }, { "x": 100, "y": 0, "color": "#E8E8EE" },
+          { "x": 0, "y": 30, "color": "#E8E8EE" }, { "x": 16, "y": 52, "color": "#FF432B" }, { "x": 67, "y": 33, "color": "#E8E8EE" }, { "x": 100, "y": 33, "color": "#E8E8EE" },
+          { "x": 0, "y": 74, "color": "#FFA31B" }, { "x": 24, "y": 92, "color": "#E8E8EE" }, { "x": 67, "y": 70, "color": "#E8E8EE" }, { "x": 100, "y": 67, "color": "#E8E8EE" },
+          { "x": 0, "y": 100, "color": "#E8E8EE" }, { "x": 34, "y": 100, "color": "#E8E8EE" }, { "x": 67, "y": 100, "color": "#E8E8EE" }, { "x": 100, "y": 100, "color": "#FFD8DE" }
+        ]
+      }
+    },
+    {
+      "name": "Sunset",
+      "gradient": {
+        "width": 1920, "height": 1080, "seed": 31, "lockBorder": true, "grain": 1.5,
+        "paletteId": "sunset",
+        "palette": ["#FF432B", "#FF7A1A", "#FFA31B", "#FFC474", "#D92A1C"],
+        "points": [
+          { "x": 0, "y": 0, "color": "#FFA31B" }, { "x": 36.8, "y": 0, "color": "#D92A1C" }, { "x": 73.4, "y": 0, "color": "#D92A1C" }, { "x": 100, "y": 0, "color": "#FF432B" },
+          { "x": 0, "y": 38.3, "color": "#FF432B" }, { "x": 24.3, "y": 31.7, "color": "#FF432B" }, { "x": 63.6, "y": 24.8, "color": "#FF432B" }, { "x": 100, "y": 42, "color": "#D92A1C" },
+          { "x": 0, "y": 72.9, "color": "#FF7A1A" }, { "x": 36.6, "y": 63.1, "color": "#FF432B" }, { "x": 71.3, "y": 68.1, "color": "#FF432B" }, { "x": 100, "y": 65.1, "color": "#FFA31B" },
+          { "x": 0, "y": 100, "color": "#FFA31B" }, { "x": 37.7, "y": 100, "color": "#FF432B" }, { "x": 57.6, "y": 100, "color": "#D92A1C" }, { "x": 100, "y": 100, "color": "#FF432B" }
+        ]
+      }
+    },
+    {
+      "name": "Soft Pastel",
+      "gradient": {
+        "width": 1920, "height": 1080, "seed": 12, "lockBorder": true, "grain": 1.5,
+        "paletteId": "pastel",
+        "palette": ["#F6EEF4", "#FDE2E4", "#DFE7FD", "#E2F0CB", "#FFF1D0"],
+        "points": [
+          { "x": 0, "y": 0, "color": "#F6EEF4" }, { "x": 29.1, "y": 0, "color": "#F6EEF4" }, { "x": 58.2, "y": 0, "color": "#F6EEF4" }, { "x": 100, "y": 0, "color": "#F6EEF4" },
+          { "x": 0, "y": 34.9, "color": "#F6EEF4" }, { "x": 42.2, "y": 26.4, "color": "#E2F0CB" }, { "x": 56.9, "y": 37.3, "color": "#FDE2E4" }, { "x": 100, "y": 36.1, "color": "#F6EEF4" },
+          { "x": 0, "y": 67.8, "color": "#F6EEF4" }, { "x": 38.1, "y": 57.3, "color": "#FFF1D0" }, { "x": 75.2, "y": 63.2, "color": "#E2F0CB" }, { "x": 100, "y": 67, "color": "#F6EEF4" },
+          { "x": 0, "y": 100, "color": "#DFE7FD" }, { "x": 38.3, "y": 100, "color": "#F6EEF4" }, { "x": 69.7, "y": 100, "color": "#DFE7FD" }, { "x": 100, "y": 100, "color": "#FDE2E4" }
+        ]
+      }
+    },
+    {
+      "name": "Deep Ocean",
+      "gradient": {
+        "width": 1920, "height": 1080, "seed": 7, "lockBorder": true, "grain": 1.5,
+        "paletteId": "ocean",
+        "palette": ["#0B1F3A", "#1E5AA8", "#3DA5D9", "#A7E6FF", "#12355F"],
+        "points": [
+          { "x": 0, "y": 0, "color": "#12355F" }, { "x": 23.6, "y": 0, "color": "#0B1F3A" }, { "x": 57.9, "y": 0, "color": "#0B1F3A" }, { "x": 100, "y": 0, "color": "#0B1F3A" },
+          { "x": 0, "y": 42.9, "color": "#A7E6FF" }, { "x": 37.3, "y": 33.8, "color": "#0B1F3A" }, { "x": 64.8, "y": 32.7, "color": "#0B1F3A" }, { "x": 100, "y": 28.1, "color": "#0B1F3A" },
+          { "x": 0, "y": 67.7, "color": "#0B1F3A" }, { "x": 37.9, "y": 61.8, "color": "#0B1F3A" }, { "x": 59.8, "y": 71.9, "color": "#A7E6FF" }, { "x": 100, "y": 67, "color": "#12355F" },
+          { "x": 0, "y": 100, "color": "#0B1F3A" }, { "x": 27.3, "y": 100, "color": "#1E5AA8" }, { "x": 64, "y": 100, "color": "#A7E6FF" }, { "x": 100, "y": 100, "color": "#0B1F3A" }
+        ]
+      }
+    }
+  ]
+}
