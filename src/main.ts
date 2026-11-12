@@ -213,6 +213,50 @@ new ResizeObserver(fitFrame).observe(stage)
 
 // ---- handles ------------------------------------------------------------------
 
+// Double click a handle: palette swatches pop up next to it
+let popover: HTMLDivElement | null = null
+function closeColorPopover() {
+  popover?.remove()
+  popover = null
+}
+function openColorPopover(index: number) {
+  closeColorPopover()
+  select(index)
+  const point = state.points[index]
+  const [x, y] = effectivePosition(index, point.x, point.y, state.lockBorder)
+  const box = document.createElement('div')
+  box.className = 'color-popover'
+  box.setAttribute('role', 'dialog')
+  box.setAttribute('aria-label', 'Pick a colour for this point')
+  box.style.left = `${Math.min(Math.max(x, 12), 88)}%`
+  box.style.top = `${y}%`
+  // Above the handle, or below when it sits near the top edge
+  box.dataset.placement = y < 22 ? 'below' : 'above'
+  state.palette.forEach((color) => {
+    const swatch = document.createElement('button')
+    swatch.className = 'pop-swatch'
+    swatch.style.background = color
+    swatch.title = color.toUpperCase()
+    swatch.setAttribute('aria-label', `Use ${color}`)
+    swatch.setAttribute('aria-pressed', String(color.toLowerCase() === point.color.toLowerCase()))
+    swatch.addEventListener('click', () => {
+      state.points[index].color = color.toLowerCase()
+      closeColorPopover()
+      onChange({ palette: false })
+    })
+    box.appendChild(swatch)
+  })
+  handlesEl.appendChild(box)
+  popover = box
+  ;(box.firstElementChild as HTMLElement | null)?.focus()
+}
+document.addEventListener('pointerdown', (event) => {
+  if (popover && !popover.contains(event.target as Node)) closeColorPopover()
+})
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeColorPopover()
+})
+
 const handleButtons: HTMLButtonElement[] = []
 for (let i = 0; i < POINT_COUNT; i++) {
   const button = document.createElement('button')
@@ -256,6 +300,10 @@ for (let i = 0; i < POINT_COUNT; i++) {
     p.x = px
     p.y = py
     onChange({ palette: false })
+  })
+  button.addEventListener('dblclick', (event) => {
+    event.preventDefault()
+    openColorPopover(i)
   })
   handlesEl.appendChild(button)
   handleButtons.push(button)

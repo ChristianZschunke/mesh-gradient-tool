@@ -405,3 +405,32 @@ select:focus-visible {
   margin-right: -6px;
   overscroll-behavior: contain;
 }
+
+.color-popover {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.3);
+  transform: translate(-50%, calc(-100% - 18px));
+}
+.color-popover[data-placement='below'] {
+  transform: translate(-50%, 18px);
+}
+.pop-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+.pop-swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent);
+}
