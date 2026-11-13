@@ -536,3 +536,28 @@ button.small {
 .panel {
   order: -1;
 }
+
+/* ---- experimental free mode ---- */
+.handles.off {
+  display: none;
+}
+.handles {
+  pointer-events: auto;
+}
+.ring {
+  position: absolute;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+  display: none;
+}
+label.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+}

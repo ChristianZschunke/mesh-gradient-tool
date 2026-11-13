@@ -20,6 +20,7 @@ export interface MeshPoint {
 }
 
 export interface MeshParams {
+  mode?: 'mesh'
   /** Exactly 16 points, row-major */
   points: MeshPoint[]
   /** Corners stay put and edge points only slide along their edge */
@@ -112,6 +113,76 @@ export function effectivePosition(
   return [px, py]
 }
 
+// ---- experimental "free" mode ---------------------------------------------------
+// Handles at arbitrary positions on a tessellated plane. Each handle has a rest
+// position, a current position, a colour and a radius of influence. Vertices
+// within the radius follow the handle (smooth falloff) and take its colour.
+
+export const MAX_FREE_HANDLES = 32
+
+export interface FreeHandle {
+  /** Rest position in percent of width/height */
+  x0: number
+  y0: number
+  /** Current position; the difference to the rest position warps the surface */
+  x: number
+  y: number
+  /** Radius of influence in percent of the canvas height */
+  radius: number
+  color: RGB
+}
+
+export interface FreeParams {
+  mode: 'free'
+  handles: FreeHandle[]
+  /** Colour where no handle reaches */
+  base: RGB
+  /** Border vertices stay on the border */
+  lockBorder: boolean
+  grain: number
+  seed: number
+}
+
+export type RenderParams = MeshParams | FreeParams
+
+const FREE_VERTEX_SHADER = `#version 300 es
+precision highp float;
+#define MAXH ${MAX_FREE_HANDLES}
+uniform vec4 H0[MAXH]; // xy rest position (0-1), z radius (0-1 of height)
+uniform vec4 H1[MAXH]; // xy current position
+uniform vec4 HC[MAXH]; // linear rgb
+uniform int uCount;
+uniform float uAspect;
+uniform vec3 uBase;
+uniform float uLock;
+in vec2 a;
+out vec4 vColor;
+void main() {
+  vec2 disp = vec2(0.);
+  vec3 acc = vec3(0.);
+  float ws = 0.;
+  for (int i = 0; i < MAXH; i++) {
+    if (i >= uCount) break;
+    // distance in height units, so the influence is circular on wide canvases
+    float d = length((a - H0[i].xy) * vec2(uAspect, 1.));
+    float t = clamp(1. - d / H0[i].z, 0., 1.);
+    float w = t * t * (3. - 2. * t);
+    disp += w * (H1[i].xy - H0[i].xy);
+    acc += w * HC[i].rgb;
+    ws += w;
+  }
+  disp /= max(1., ws);
+  vec3 col = ws < 1. ? acc + (1. - ws) * uBase : acc / ws;
+  vec2 pos = a + disp;
+  if (uLock > .5) {
+    if (a.x <= 0. || a.x >= 1.) pos.x = a.x;
+    if (a.y <= 0. || a.y >= 1.) pos.y = a.y;
+    pos = clamp(pos, 0., 1.);
+  }
+  gl_Position = vec4(pos.x * 2. - 1., 1. - pos.y * 2., 0., 1.);
+  vColor = vec4(clamp(col, 0., 1.), 1.);
+}`
+
 export interface MeshLimits {
   /** Largest edge (px) a WebGL surface can have on this device */
   maxSide: number
@@ -136,15 +207,21 @@ export function getMeshLimits(): MeshLimits | null {
   return (cachedLimits = { maxSide })
 }
 
+interface Loc {
+  program: WebGLProgram
+  grain: WebGLUniformLocation | null
+  [name: string]: WebGLProgram | WebGLUniformLocation | null
+}
+
 export class MeshRenderer {
   private gl: WebGL2RenderingContext
   private uniforms = new Float32Array(128)
-  private uniformLocation: WebGLUniformLocation | null = null
-  private grainLocation: WebGLUniformLocation | null = null
+  private mesh: Loc | null = null
+  private free: Loc | null = null
   private indexCount = 0
   private ready = false
   private lost = false
-  private last: MeshParams | null = null
+  private last: RenderParams | null = null
   private readonly onContextLost = (event: Event) => {
     event.preventDefault()
     this.ready = false
@@ -153,6 +230,7 @@ export class MeshRenderer {
   private readonly onContextRestored = () => {
     this.lost = false
     try {
+      this.free = null
       this.init()
       this.options.onRestore?.()
     } catch (error) {
@@ -174,7 +252,7 @@ export class MeshRenderer {
     this.init()
   }
 
-  private init() {
+  private link(vertex: string, names: string[]): Loc {
     const gl = this.gl
     const compile = (type: number, source: string) => {
       const shader = gl.createShader(type)!
@@ -186,15 +264,21 @@ export class MeshRenderer {
       return shader
     }
     const program = gl.createProgram()!
-    gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX_SHADER))
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex))
     gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER))
+    gl.bindAttribLocation(program, 0, 'a')
     gl.linkProgram(program)
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
       throw new Error(gl.getProgramInfoLog(program) ?? 'program link failed')
     }
-    gl.useProgram(program)
-    this.uniformLocation = gl.getUniformLocation(program, 'U')
-    this.grainLocation = gl.getUniformLocation(program, 'uGrain')
+    const loc: Loc = { program, grain: gl.getUniformLocation(program, 'uGrain') }
+    for (const name of names) loc[name] = gl.getUniformLocation(program, name)
+    return loc
+  }
+
+  private init() {
+    const gl = this.gl
+    this.mesh = this.link(VERTEX_SHADER, ['U'])
 
     const side = TESSELLATION + 1
     const vertices = new Float32Array(side * side * 2)
@@ -218,47 +302,90 @@ export class MeshRenderer {
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer())
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW)
-    const attribute = gl.getAttribLocation(program, 'a')
-    gl.enableVertexAttribArray(attribute)
-    gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0)
+    gl.enableVertexAttribArray(0)
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
     this.ready = true
   }
 
   /** Draws into the canvas at its current width/height (set those first) */
-  render(params: MeshParams) {
+  render(params: RenderParams) {
     if (this.lost || !this.ready) return
     this.last = params
     const gl = this.gl
-    const { points, lockBorder, grain, seed } = params
-    if (points.length !== POINT_COUNT) throw new Error('mesh needs 16 points')
-
-    let avgR = 0
-    let avgG = 0
-    let avgB = 0
-    points.forEach((point, index) => {
-      const [x, y] = effectivePosition(index, point.x, point.y, lockBorder)
-      this.uniforms.set([x / 100, y / 100, 0, 0], index * 4)
-      this.uniforms.set(
-        [
-          toLinear(point.color[0]),
-          toLinear(point.color[1]),
-          toLinear(point.color[2]),
-          1,
-        ],
-        (16 + index) * 4,
-      )
-      avgR += point.color[0]
-      avgG += point.color[1]
-      avgB += point.color[2]
-    })
-
     gl.viewport(0, 0, this.canvas.width, this.canvas.height)
-    // Behind the mesh: only visible if an unlocked border leaves gaps
-    gl.clearColor(avgR / POINT_COUNT, avgG / POINT_COUNT, avgB / POINT_COUNT, 1)
+
+    let program: Loc
+    if (params.mode === 'free') {
+      program = this.free ??= this.link(FREE_VERTEX_SHADER, [
+        'H0',
+        'H1',
+        'HC',
+        'uCount',
+        'uAspect',
+        'uBase',
+        'uLock',
+      ])
+      gl.useProgram(program.program)
+      const handles = params.handles.slice(0, MAX_FREE_HANDLES)
+      const h0 = new Float32Array(MAX_FREE_HANDLES * 4)
+      const h1 = new Float32Array(MAX_FREE_HANDLES * 4)
+      const hc = new Float32Array(MAX_FREE_HANDLES * 4)
+      handles.forEach((h, i) => {
+        h0.set([h.x0 / 100, h.y0 / 100, Math.max(h.radius, 0.5) / 100, 0], i * 4)
+        h1.set([h.x / 100, h.y / 100, 0, 0], i * 4)
+        hc.set([toLinear(h.color[0]), toLinear(h.color[1]), toLinear(h.color[2]), 1], i * 4)
+      })
+      gl.uniform4fv(program.H0 as WebGLUniformLocation, h0)
+      gl.uniform4fv(program.H1 as WebGLUniformLocation, h1)
+      gl.uniform4fv(program.HC as WebGLUniformLocation, hc)
+      gl.uniform1i(program.uCount as WebGLUniformLocation, handles.length)
+      gl.uniform1f(program.uAspect as WebGLUniformLocation, this.canvas.width / this.canvas.height)
+      gl.uniform3f(
+        program.uBase as WebGLUniformLocation,
+        toLinear(params.base[0]),
+        toLinear(params.base[1]),
+        toLinear(params.base[2]),
+      )
+      gl.uniform1f(program.uLock as WebGLUniformLocation, params.lockBorder ? 1 : 0)
+      gl.clearColor(params.base[0], params.base[1], params.base[2], 1)
+    } else {
+      program = this.mesh!
+      gl.useProgram(program.program)
+      const { points, lockBorder } = params
+      if (points.length !== POINT_COUNT) throw new Error('mesh needs 16 points')
+      let avgR = 0
+      let avgG = 0
+      let avgB = 0
+      points.forEach((point, index) => {
+        const [x, y] = effectivePosition(index, point.x, point.y, lockBorder)
+        this.uniforms.set([x / 100, y / 100, 0, 0], index * 4)
+        this.uniforms.set(
+          [toLinear(point.color[0]), toLinear(point.color[1]), toLinear(point.color[2]), 1],
+          (16 + index) * 4,
+        )
+        avgR += point.color[0]
+        avgG += point.color[1]
+        avgB += point.color[2]
+      })
+      gl.uniform4fv(program.U as WebGLUniformLocation, this.uniforms)
+      // Behind the mesh: only visible if an unlocked border leaves gaps
+      gl.clearColor(avgR / POINT_COUNT, avgG / POINT_COUNT, avgB / POINT_COUNT, 1)
+    }
+
     gl.clear(gl.COLOR_BUFFER_BIT)
-    gl.uniform4fv(this.uniformLocation, this.uniforms)
-    gl.uniform2f(this.grainLocation, grain / 255, (seed % 997) * 0.37)
+    gl.uniform2f(program.grain, params.grain / 255, (params.seed % 997) * 0.37)
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_SHORT, 0)
+  }
+
+  /** The sRGB colour on screen at a position (0-1 of width/height), without grain */
+  sample(params: RenderParams, fx: number, fy: number): RGB {
+    this.render({ ...params, grain: 0 })
+    const gl = this.gl
+    const x = Math.min(this.canvas.width - 1, Math.max(0, Math.floor(fx * this.canvas.width)))
+    const y = Math.min(this.canvas.height - 1, Math.max(0, Math.floor(fy * this.canvas.height)))
+    const pixel = new Uint8Array(4)
+    gl.readPixels(x, this.canvas.height - 1 - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel)
+    return [pixel[0] / 255, pixel[1] / 255, pixel[2] / 255]
   }
 
   /** Repeats the last frame, e.g. after the canvas was resized */

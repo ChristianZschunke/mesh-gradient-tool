@@ -28,6 +28,12 @@ Needs Node 20+ (developed on Node 22) and a browser with WebGL2.
 
 The preview is rendered at the export size up to 2048 px on the long side; larger sizes are previewed downsampled (the gradient is resolution independent, only the grain pattern differs).
 
+## Free mode (experimental)
+
+Switch *Mode* to *Free (experimental)* for a different way to build gradients: handles at arbitrary positions on a tessellated plane. Each handle has a colour, a radius of influence (the dashed ring) and a rest position. Vertices inside the radius take the handle's colour and, when you drag the handle, follow it with a smooth falloff (like proportional editing in 3D software). Double-click empty space to add a handle (it starts with the colour currently shown there), right-click a handle to remove it, double-click a handle to pick a palette colour, middle-drag a handle to resize its radius (right of the handle grows it, left shrinks it). *Dragging also warps the surface* off gives plain colour blobs without distortion. Large pulls can fold the surface over itself.
+
+Free-mode gradients are saved in links, JSON files, presets and the export log like mesh ones; opening one switches the mode. The Starter gradients are mesh-mode.
+
 ## Shared team presets
 
 Team presets are the entries of `public/presets.json` (`{ "presets": [{ "name", "gradient" }] }`). To add one: build it in the tool, *Save* it under My presets, press *Export my presets*, and copy the entries you want from the downloaded `presets.json` into `public/presets.json`. Commit and push; the site updates itself.
