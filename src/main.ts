@@ -77,6 +77,12 @@ app.innerHTML = `
       <div class="checks">
         <label><input type="checkbox" id="warp" /> Dragging also warps the surface</label>
         <label><input type="checkbox" id="lockFree" /> Lock border</label>
+        <label><input type="checkbox" id="relax" /> Relax surface (smooth out stretching)</label>
+      </div>
+      <div class="row" id="relaxRow">
+        <label for="relaxAmount">Amount</label>
+        <input type="range" id="relaxAmount" min="0.5" max="35" step="0.5" class="grow" />
+        <span class="value" id="relaxValue"></span>
       </div>
       <p class="hint">Double-click empty space to add a handle, right-click a handle to remove it, double-click a handle to pick a palette colour. Middle-drag a handle to change its radius of influence: pointer right of the handle grows it, left shrinks it.</p>
     </section>
@@ -554,6 +560,14 @@ $<HTMLInputElement>('warp').addEventListener('change', (event) => {
   state.warp = (event.target as HTMLInputElement).checked
   onChange({ palette: false })
 })
+$<HTMLInputElement>('relax').addEventListener('change', (event) => {
+  state.relax = (event.target as HTMLInputElement).checked
+  onChange({ palette: false })
+})
+$<HTMLInputElement>('relaxAmount').addEventListener('input', (event) => {
+  state.relaxAmount = Number((event.target as HTMLInputElement).value)
+  onChange({ palette: false, freeInputs: false })
+})
 $<HTMLInputElement>('lockFree').addEventListener('change', (event) => {
   state.lockBorder = (event.target as HTMLInputElement).checked
   onChange({ palette: false })
@@ -598,6 +612,11 @@ function syncMode(updateInputs = true) {
   if (sel) $('freeRadiusValue').textContent = `${Math.round(sel.radius)}%`
   $<HTMLInputElement>('warp').checked = state.warp
   $<HTMLInputElement>('lockFree').checked = state.lockBorder
+  $<HTMLInputElement>('relax').checked = state.relax
+  $<HTMLInputElement>('relaxAmount').disabled = !state.relax
+  if (updateInputs) $<HTMLInputElement>('relaxAmount').value = String(state.relaxAmount)
+  $('relaxValue').textContent = state.relaxAmount.toFixed(1)
+  $('relaxRow').style.opacity = state.relax ? '' : '0.5'
 }
 
 // ---- panel: size --------------------------------------------------------------
