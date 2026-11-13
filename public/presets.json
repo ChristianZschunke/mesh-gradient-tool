@@ -1,3 +1,804 @@
 {
-  "presets": []
+  "presets": [
+    {
+      "name": "galvany-heat-01",
+      "gradient": {
+        "width": 1920,
+        "height": 1080,
+        "seed": 2024,
+        "lockBorder": true,
+        "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": [
+          "#e8e8ee",
+          "#ffc474",
+          "#ff432b",
+          "#ffd8de",
+          "#ffa31b"
+        ],
+        "points": [
+          {
+            "x": 0,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 67,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 33,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 33,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 70.85,
+            "y": 42.21,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 30,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 67,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 70,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 76,
+            "y": 92,
+            "color": "#ff432b"
+          },
+          {
+            "x": 100,
+            "y": 74,
+            "color": "#ffa31b"
+          },
+          {
+            "x": 0,
+            "y": 100,
+            "color": "#ffd8de"
+          },
+          {
+            "x": 33,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 66,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 100,
+            "color": "#e8e8ee"
+          }
+        ]
+      }
+    },
+    {
+      "name": "galvany-heat-02",
+      "gradient": {
+        "width": 1920,
+        "height": 1080,
+        "seed": 2024,
+        "lockBorder": true,
+        "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": [
+          "#e8e8ee",
+          "#ffc474",
+          "#ff432b",
+          "#ffd8de",
+          "#ffa31b"
+        ],
+        "points": [
+          {
+            "x": 0,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 67,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 33,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 33,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 75.86,
+            "y": 61.07,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 30,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 67,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 70,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 53.67,
+            "y": 79.56,
+            "color": "#ffc474"
+          },
+          {
+            "x": 100,
+            "y": 74,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 65.81,
+            "y": 100,
+            "color": "#ff432b"
+          },
+          {
+            "x": 100,
+            "y": 100,
+            "color": "#ff432b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "galvany-heat-03",
+      "gradient": {
+        "width": 1920,
+        "height": 1080,
+        "seed": 2024,
+        "lockBorder": true,
+        "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": [
+          "#e8e8ee",
+          "#ffc474",
+          "#ff432b",
+          "#ffd8de",
+          "#ffa31b"
+        ],
+        "points": [
+          {
+            "x": 0,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 67,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 33,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 33,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 68.19,
+            "y": 39.87,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 30,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 67,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 31.74,
+            "y": 82.33,
+            "color": "#ffa31b"
+          },
+          {
+            "x": 50.69,
+            "y": 65.11,
+            "color": "#ffd8de"
+          },
+          {
+            "x": 100,
+            "y": 74,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 65.81,
+            "y": 100,
+            "color": "#ff432b"
+          },
+          {
+            "x": 100,
+            "y": 100,
+            "color": "#e8e8ee"
+          }
+        ]
+      }
+    },
+    {
+      "name": "galvany-heat-04",
+      "gradient": {
+        "width": 1920,
+        "height": 1080,
+        "seed": 2024,
+        "lockBorder": true,
+        "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": [
+          "#e8e8ee",
+          "#ffc474",
+          "#ff432b",
+          "#ffd8de",
+          "#ffa31b"
+        ],
+        "points": [
+          {
+            "x": 0,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 0,
+            "color": "#ff432b"
+          },
+          {
+            "x": 67,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 33,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 33,
+            "color": "#ffc474"
+          },
+          {
+            "x": 75.86,
+            "y": 61.07,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 30,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 67,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 41.68,
+            "y": 53.75,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 53.67,
+            "y": 79.56,
+            "color": "#ffc474"
+          },
+          {
+            "x": 100,
+            "y": 74,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 65.81,
+            "y": 100,
+            "color": "#ff432b"
+          },
+          {
+            "x": 100,
+            "y": 100,
+            "color": "#ff432b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "galvany-heat-05",
+      "gradient": {
+        "width": 1920,
+        "height": 1080,
+        "seed": 2024,
+        "lockBorder": true,
+        "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": [
+          "#e8e8ee",
+          "#ffc474",
+          "#ff432b",
+          "#ffd8de",
+          "#ffa31b"
+        ],
+        "points": [
+          {
+            "x": 0,
+            "y": 0,
+            "color": "#ff432b"
+          },
+          {
+            "x": 33,
+            "y": 0,
+            "color": "#ffc474"
+          },
+          {
+            "x": 67,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 33,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 32.95,
+            "y": 40.88,
+            "color": "#ffd8de"
+          },
+          {
+            "x": 75.86,
+            "y": 61.07,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 30,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 67,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 43.13,
+            "y": 59.62,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 53.67,
+            "y": 79.56,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 74,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 65.81,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 100,
+            "color": "#e8e8ee"
+          }
+        ]
+      }
+    },
+    {
+      "name": "galvany-heat-06",
+      "gradient": {
+        "width": 1920,
+        "height": 1080,
+        "seed": 2024,
+        "lockBorder": true,
+        "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": [
+          "#e8e8ee",
+          "#ffc474",
+          "#ff432b",
+          "#ffd8de",
+          "#ffa31b"
+        ],
+        "points": [
+          {
+            "x": 0,
+            "y": 0,
+            "color": "#ff432b"
+          },
+          {
+            "x": 33,
+            "y": 0,
+            "color": "#ffc474"
+          },
+          {
+            "x": 67,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 32.87,
+            "color": "#ff432b"
+          },
+          {
+            "x": 32.95,
+            "y": 40.88,
+            "color": "#ff432b"
+          },
+          {
+            "x": 75.86,
+            "y": 61.07,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 30,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 67,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 38.59,
+            "y": 56.03,
+            "color": "#ffc474"
+          },
+          {
+            "x": 53.67,
+            "y": 79.56,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 74,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 100,
+            "color": "#ffc474"
+          },
+          {
+            "x": 65.71,
+            "y": 100,
+            "color": "#ffc474"
+          },
+          {
+            "x": 100,
+            "y": 100,
+            "color": "#e8e8ee"
+          }
+        ]
+      }
+    },
+    {
+      "name": "galvany-heat-07",
+      "gradient": {
+        "width": 1920,
+        "height": 1080,
+        "seed": 2024,
+        "lockBorder": true,
+        "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": [
+          "#e8e8ee",
+          "#ffc474",
+          "#ff432b",
+          "#ffd8de",
+          "#ffa31b"
+        ],
+        "points": [
+          {
+            "x": 0,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33.09,
+            "y": 0,
+            "color": "#ffd8de"
+          },
+          {
+            "x": 67,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 100,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 32.87,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 21.41,
+            "y": 17.1,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 75.25,
+            "y": 35.02,
+            "color": "#ffd8de"
+          },
+          {
+            "x": 100,
+            "y": 30,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 67,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 25.78,
+            "y": 72.18,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 65.49,
+            "y": 57.03,
+            "color": "#ffc474"
+          },
+          {
+            "x": 100,
+            "y": 74,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 0,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 100,
+            "color": "#ffc474"
+          },
+          {
+            "x": 65.71,
+            "y": 100,
+            "color": "#ffa31b"
+          },
+          {
+            "x": 100,
+            "y": 100,
+            "color": "#ff432b"
+          }
+        ]
+      }
+    },
+    {
+      "name": "galvany-heat-08",
+      "gradient": {
+        "width": 1920,
+        "height": 1080,
+        "seed": 2024,
+        "lockBorder": true,
+        "grain": 1.5,
+        "paletteId": "galvany",
+        "palette": [
+          "#e8e8ee",
+          "#ffc474",
+          "#ff432b",
+          "#ffd8de",
+          "#ffa31b"
+        ],
+        "points": [
+          {
+            "x": 0,
+            "y": 0,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33.09,
+            "y": 0,
+            "color": "#ffd8de"
+          },
+          {
+            "x": 67.02,
+            "y": 0,
+            "color": "#ffd8de"
+          },
+          {
+            "x": 100,
+            "y": 0,
+            "color": "#ff432b"
+          },
+          {
+            "x": 0,
+            "y": 32.87,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 21.41,
+            "y": 17.1,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 84.09,
+            "y": 51.99,
+            "color": "#ff432b"
+          },
+          {
+            "x": 100,
+            "y": 30,
+            "color": "#ff432b"
+          },
+          {
+            "x": 0,
+            "y": 67,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 25.78,
+            "y": 72.18,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 56.76,
+            "y": 65.68,
+            "color": "#ffc474"
+          },
+          {
+            "x": 100,
+            "y": 73.94,
+            "color": "#ff432b"
+          },
+          {
+            "x": 0,
+            "y": 100,
+            "color": "#e8e8ee"
+          },
+          {
+            "x": 33,
+            "y": 100,
+            "color": "#ffc474"
+          },
+          {
+            "x": 65.71,
+            "y": 100,
+            "color": "#ffa31b"
+          },
+          {
+            "x": 100,
+            "y": 100,
+            "color": "#ff432b"
+          }
+        ]
+      }
+    }
+  ]
 }
