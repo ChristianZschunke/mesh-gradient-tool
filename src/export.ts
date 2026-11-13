@@ -1,4 +1,4 @@
-import { MeshRenderer, getMeshLimits, hexToRgb, type MeshParams } from './mesh/mesh'
+import { MeshRenderer, getMeshLimits, hexToRgb, type RenderParams } from './mesh/mesh'
 import type { ExportFormat, ExportSettings, GradientState } from './state'
 
 export const MIME: Record<ExportFormat, string> = {
@@ -8,7 +8,17 @@ export const MIME: Record<ExportFormat, string> = {
 }
 export const EXTENSION: Record<ExportFormat, string> = { jpeg: 'jpg', webp: 'webp', png: 'png' }
 
-export function toMeshParams(state: GradientState): MeshParams {
+export function toMeshParams(state: GradientState): RenderParams {
+  if (state.mode === 'free') {
+    return {
+      mode: 'free',
+      handles: state.handles.map((h) => ({ ...h, color: hexToRgb(h.color) })),
+      base: hexToRgb(state.base),
+      lockBorder: state.lockBorder,
+      grain: state.grain,
+      seed: state.seed,
+    }
+  }
   return {
     points: state.points.map((p) => ({ x: p.x, y: p.y, color: hexToRgb(p.color) })),
     lockBorder: state.lockBorder,

@@ -8,7 +8,27 @@ export interface PointState {
   color: string // #rrggbb
 }
 
+/** Experimental free mode: a handle with a rest position, a current position, colour and radius */
+export interface HandleState {
+  x0: number
+  y0: number
+  x: number
+  y: number
+  /** Percent of the canvas height */
+  radius: number
+  color: string
+}
+
+export const MAX_HANDLES = 32
+
 export interface GradientState {
+  /** 'mesh' = 4x4 control points, 'free' = experimental free handles */
+  mode: 'mesh' | 'free'
+  handles: HandleState[]
+  /** Colour where no free handle reaches */
+  base: string
+  /** Free mode: dragging a handle also warps the surface (off: colour blobs only) */
+  warp: boolean
   width: number
   height: number
   seed: number
@@ -42,6 +62,10 @@ export const DEFAULT_EXPORT: ExportSettings = { format: 'jpeg', quality: 0.92, s
 export function defaultState(): GradientState {
   const palette = DEFAULT_PALETTE
   return {
+    mode: 'mesh',
+    handles: [],
+    base: palette.colors[0],
+    warp: true,
     width: 1920,
     height: 1080,
     seed: 2024,
@@ -83,7 +107,30 @@ export function sanitizeState(input: unknown): GradientState | null {
         .slice(0, 24)
     : []
   const known = PALETTES.some((p) => p.id === raw.paletteId)
+  const handles: HandleState[] = []
+  if (Array.isArray(raw.handles)) {
+    for (const item of raw.handles.slice(0, MAX_HANDLES)) {
+      const h = item as Record<string, unknown>
+      if (!h || typeof h.color !== 'string' || !HEX.test(h.color)) continue
+      const x = num(h.x, 50, 0, 100)
+      const y = num(h.y, 50, 0, 100)
+      handles.push({
+        x,
+        y,
+        x0: num(h.x0, x, 0, 100),
+        y0: num(h.y0, y, 0, 100),
+        radius: num(h.radius, 30, 3, 100),
+        color: h.color.toLowerCase(),
+      })
+    }
+  }
+  const baseColor =
+    typeof raw.base === 'string' && HEX.test(raw.base) ? raw.base.toLowerCase() : null
   return {
+    mode: raw.mode === 'free' && handles.length ? 'free' : 'mesh',
+    handles,
+    base: baseColor ?? (palette[0] ?? points[0].color),
+    warp: raw.warp !== false,
     width: Math.round(num(raw.width, 1920, 1, 32768)),
     height: Math.round(num(raw.height, 1080, 1, 32768)),
     seed: Math.round(num(raw.seed, 0, 0, 4294967295)),
@@ -112,7 +159,7 @@ function fromBase64Url(text: string) {
 
 /** Compact form for the URL hash: [w, h, seed, lock, grain, paletteId, palette[], points[x,y,color][]] */
 export function encodeHash(state: GradientState): string {
-  const compact = [
+  const compact: unknown[] = [
     state.width,
     state.height,
     state.seed,
@@ -122,6 +169,14 @@ export function encodeHash(state: GradientState): string {
     state.palette.map((c) => c.slice(1)),
     state.points.map((p) => [round(p.x), round(p.y), p.color.slice(1)]),
   ]
+  if (state.mode === 'free') {
+    compact.push(
+      1,
+      state.handles.map((h) => [round(h.x0), round(h.y0), round(h.x), round(h.y), round(h.radius), h.color.slice(1)]),
+      state.base.slice(1),
+      state.warp ? 1 : 0,
+    )
+  }
   return 'g=' + toBase64Url(JSON.stringify(compact))
 }
 
@@ -140,6 +195,10 @@ export function decodeHash(hash: string): GradientState | null {
       paletteId: c[5],
       palette: (c[6] as string[]).map((h) => '#' + h),
       points,
+      mode: c[8] === 1 ? 'free' : 'mesh',
+      handles: c[8] === 1 ? (c[9] as unknown[][]).map((h) => ({ x0: h[0], y0: h[1], x: h[2], y: h[3], radius: h[4], color: '#' + h[5] })) : [],
+      base: c[8] === 1 ? '#' + (c[10] as string) : undefined,
+      warp: c[8] === 1 ? c[11] === 1 : true,
     })
   } catch {
     return null

@@ -1,7 +1,7 @@
 import './style.css'
-import { MeshRenderer, effectivePosition, getMeshLimits, POINT_COUNT } from './mesh/mesh'
+import { MAX_FREE_HANDLES, MeshRenderer, effectivePosition, getMeshLimits, POINT_COUNT } from './mesh/mesh'
 import { PALETTES } from './palettes'
-import { newSeed, paletteLayout, randomPoints } from './random'
+import { newSeed, paletteLayout, randomHandles, randomPoints } from './random'
 import {
   DEFAULT_EXPORT,
   SIZE_PRESETS,
@@ -32,6 +32,7 @@ app.innerHTML = `
     <div class="frame" id="frame">
       <canvas id="canvas"></canvas>
       <div class="handles" id="handles"></div>
+      <div class="handles off" id="freeHandles"></div>
     </div>
     <div class="size-badge" id="badge"></div>
     <button class="drawer-toggle" id="drawerToggle">Gradients</button>
@@ -54,6 +55,33 @@ app.innerHTML = `
     </section>
 
     <section>
+      <h2>Mode</h2>
+      <div class="seg" id="mode">
+        <button data-v="mesh">Mesh 4×4</button><button data-v="free">Free (experimental)</button>
+      </div>
+      <p class="hint" id="modeHint"></p>
+    </section>
+
+    <section id="freeSection" hidden>
+      <h2>Free handle</h2>
+      <div class="row">
+        <label for="freeColor" id="freeLabel">Handle 1</label>
+        <input type="color" id="freeColor" />
+        <input type="range" id="freeRadius" min="4" max="90" step="1" class="grow" aria-label="Radius of influence" />
+        <span class="value" id="freeRadiusValue"></span>
+      </div>
+      <div class="row">
+        <button id="freeDelete" class="grow">Delete handle</button>
+        <label class="inline"><input type="color" id="freeBase" /> Background</label>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="warp" /> Dragging also warps the surface</label>
+        <label><input type="checkbox" id="lockFree" /> Lock border</label>
+      </div>
+      <p class="hint">Double-click empty space to add a handle, right-click a handle to remove it, double-click a handle to pick a palette colour. The ring shows the radius of influence.</p>
+    </section>
+
+    <section>
       <h2>Colours</h2>
       <div class="swatches" id="swatches"></div>
       <div class="row">
@@ -64,7 +92,7 @@ app.innerHTML = `
       <p class="hint">Click a swatch to paint the selected point. The seed reproduces a randomized layout.</p>
     </section>
 
-    <section>
+    <section id="meshSection">
       <h2>Selected point</h2>
       <div class="row">
         <label for="pointColor" id="pointLabel">Point 1</label>
@@ -220,11 +248,14 @@ function closeColorPopover() {
   popover?.remove()
   popover = null
 }
-function openColorPopover(index: number) {
+function openColorPopover(
+  x: number,
+  y: number,
+  current: string,
+  onPick: (color: string) => void,
+  parent: HTMLElement,
+) {
   closeColorPopover()
-  select(index)
-  const point = state.points[index]
-  const [x, y] = effectivePosition(index, point.x, point.y, state.lockBorder)
   const box = document.createElement('div')
   box.className = 'color-popover'
   box.setAttribute('role', 'dialog')
@@ -239,15 +270,14 @@ function openColorPopover(index: number) {
     swatch.style.background = color
     swatch.title = color.toUpperCase()
     swatch.setAttribute('aria-label', `Use ${color}`)
-    swatch.setAttribute('aria-pressed', String(color.toLowerCase() === point.color.toLowerCase()))
+    swatch.setAttribute('aria-pressed', String(color.toLowerCase() === current.toLowerCase()))
     swatch.addEventListener('click', () => {
-      state.points[index].color = color.toLowerCase()
       closeColorPopover()
-      onChange({ palette: false })
+      onPick(color.toLowerCase())
     })
     box.appendChild(swatch)
   })
-  handlesEl.appendChild(box)
+  parent.appendChild(box)
   popover = box
   ;(box.firstElementChild as HTMLElement | null)?.focus()
 }
@@ -304,7 +334,13 @@ for (let i = 0; i < POINT_COUNT; i++) {
   })
   button.addEventListener('dblclick', (event) => {
     event.preventDefault()
-    openColorPopover(i)
+    select(i)
+    const p = state.points[i]
+    const [px, py] = effectivePosition(i, p.x, p.y, state.lockBorder)
+    openColorPopover(px, py, p.color, (color) => {
+      state.points[i].color = color
+      onChange({ palette: false })
+    }, handlesEl)
   })
   handlesEl.appendChild(button)
   handleButtons.push(button)
@@ -325,6 +361,208 @@ function select(i: number) {
   selected = i
   syncHandles()
   syncPoint()
+}
+
+// ---- experimental free mode: handles ------------------------------------------
+
+const freeHandlesEl = $('freeHandles')
+const freeButtons: HTMLButtonElement[] = []
+let selectedFree = 0
+const freeRing = document.createElement('div')
+freeRing.className = 'ring'
+freeHandlesEl.appendChild(freeRing)
+
+const toHex = (c: [number, number, number]) =>
+  '#' +
+  c
+    .map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0'))
+    .join('')
+
+function pointerPercent(e: { clientX: number; clientY: number }) {
+  const rect = frame.getBoundingClientRect()
+  return [
+    Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)),
+    Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)),
+  ] as const
+}
+
+function moveFreeHandle(i: number, x: number, y: number) {
+  const h = state.handles[i]
+  if (!h) return
+  h.x = Math.round(x * 100) / 100
+  h.y = Math.round(y * 100) / 100
+  // Without warp the handle only moves its colour blob: the rest position follows
+  if (!state.warp) {
+    h.x0 = h.x
+    h.y0 = h.y
+  }
+  onChange({ palette: false })
+}
+
+function removeFreeHandle(i: number) {
+  if (state.handles.length <= 1) return setStatus('Keep at least one handle.', 'err')
+  state.handles.splice(i, 1)
+  selectedFree = Math.min(selectedFree, state.handles.length - 1)
+  onChange({ palette: false })
+}
+
+function createFreeButton(i: number) {
+  const button = document.createElement('button')
+  button.className = 'handle free'
+  button.setAttribute('aria-label', `Free handle ${i + 1}`)
+  button.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    selectFree(i)
+    button.setPointerCapture(event.pointerId)
+    const move = (e: PointerEvent) => {
+      const [x, y] = pointerPercent(e)
+      moveFreeHandle(i, x, y)
+    }
+    const up = () => {
+      button.removeEventListener('pointermove', move)
+      button.removeEventListener('pointerup', up)
+      button.removeEventListener('pointercancel', up)
+    }
+    button.addEventListener('pointermove', move)
+    button.addEventListener('pointerup', up)
+    button.addEventListener('pointercancel', up)
+  })
+  button.addEventListener('contextmenu', (event) => {
+    event.preventDefault()
+    removeFreeHandle(i)
+  })
+  button.addEventListener('keydown', (event) => {
+    const d = event.shiftKey ? 5 : 1
+    const delta: Record<string, [number, number]> = {
+      ArrowLeft: [-d, 0],
+      ArrowRight: [d, 0],
+      ArrowUp: [0, -d],
+      ArrowDown: [0, d],
+    }
+    const step = delta[event.key]
+    if (event.key === 'Delete') return removeFreeHandle(i)
+    if (!step) return
+    event.preventDefault()
+    const h = state.handles[i]
+    moveFreeHandle(i, Math.min(100, Math.max(0, h.x + step[0])), Math.min(100, Math.max(0, h.y + step[1])))
+  })
+  button.addEventListener('dblclick', (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    selectFree(i)
+    const h = state.handles[i]
+    openColorPopover(h.x, h.y, h.color, (color) => {
+      state.handles[i].color = color
+      onChange({ palette: false })
+    }, freeHandlesEl)
+  })
+  freeHandlesEl.appendChild(button)
+  freeButtons.push(button)
+}
+
+// Double click on empty space adds a handle that starts with the colour currently shown there
+freeHandlesEl.addEventListener('dblclick', (event) => {
+  if (state.mode !== 'free' || event.target !== freeHandlesEl || !renderer) return
+  if (state.handles.length >= MAX_FREE_HANDLES) {
+    return setStatus(`At most ${MAX_FREE_HANDLES} handles.`, 'err')
+  }
+  const [x, y] = pointerPercent(event)
+  const color = toHex(renderer.sample(toMeshParams(state), x / 100, y / 100))
+  state.handles.push({ x0: x, y0: y, x, y, radius: 28, color })
+  selectedFree = state.handles.length - 1
+  onChange({ palette: false })
+})
+
+function selectFree(i: number) {
+  selectedFree = i
+  onChange({ palette: false })
+}
+
+function syncFreeHandles() {
+  while (freeButtons.length > state.handles.length) freeButtons.pop()!.remove()
+  while (freeButtons.length < state.handles.length) createFreeButton(freeButtons.length)
+  freeButtons.forEach((button, i) => {
+    const h = state.handles[i]
+    button.style.left = `${h.x}%`
+    button.style.top = `${h.y}%`
+    button.style.background = h.color
+    button.classList.toggle('selected', i === selectedFree)
+  })
+  const sel = state.handles[selectedFree]
+  freeRing.style.display = state.mode === 'free' && sel ? 'block' : 'none'
+  if (sel) {
+    freeRing.style.left = `${sel.x0}%`
+    freeRing.style.top = `${sel.y0}%`
+    freeRing.style.height = `${sel.radius * 2}%`
+  }
+}
+
+// ---- experimental free mode: panel --------------------------------------------
+
+const freeColor = $<HTMLInputElement>('freeColor')
+const freeRadius = $<HTMLInputElement>('freeRadius')
+freeColor.addEventListener('input', () => {
+  if (state.handles[selectedFree]) state.handles[selectedFree].color = freeColor.value.toLowerCase()
+  onChange({ palette: false, freeInputs: false })
+})
+freeRadius.addEventListener('input', () => {
+  if (state.handles[selectedFree]) state.handles[selectedFree].radius = Number(freeRadius.value)
+  onChange({ palette: false, freeInputs: false })
+})
+$('freeDelete').addEventListener('click', () => removeFreeHandle(selectedFree))
+$<HTMLInputElement>('freeBase').addEventListener('input', (event) => {
+  state.base = (event.target as HTMLInputElement).value.toLowerCase()
+  onChange({ palette: false, freeInputs: false })
+})
+$<HTMLInputElement>('warp').addEventListener('change', (event) => {
+  state.warp = (event.target as HTMLInputElement).checked
+  onChange({ palette: false })
+})
+$<HTMLInputElement>('lockFree').addEventListener('change', (event) => {
+  state.lockBorder = (event.target as HTMLInputElement).checked
+  onChange({ palette: false })
+})
+
+/** Free mode needs handles: create them from the palette when switching for the first time */
+function regenFree() {
+  if (state.mode !== 'free') return
+  state.handles = randomHandles(state.palette, state.seed)
+  state.base = state.palette[0]
+  selectedFree = 0
+}
+$('mode').addEventListener('click', (event) => {
+  const v = (event.target as HTMLElement).dataset.v
+  if (v !== 'mesh' && v !== 'free') return
+  state.mode = v
+  if (v === 'free' && !state.handles.length) regenFree()
+  closeColorPopover()
+  onChange()
+})
+
+function syncMode(updateInputs = true) {
+  const free = state.mode === 'free'
+  for (const b of $('mode').querySelectorAll('button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.v === state.mode))
+  }
+  $('modeHint').textContent = free
+    ? 'Experimental: soft colour handles on a flexible surface. Presets and the 8 starters use the mesh mode.'
+    : 'The 4×4 mesh of the Figma shader.'
+  $('freeSection').hidden = !free
+  $('meshSection').hidden = free
+  handlesEl.classList.toggle('off', free)
+  freeHandlesEl.classList.toggle('off', !free)
+  if (!free) return
+  const sel = state.handles[selectedFree]
+  $('freeLabel').textContent = `Handle ${selectedFree + 1}`
+  if (updateInputs && sel) {
+    freeColor.value = sel.color
+    freeRadius.value = String(sel.radius)
+    $<HTMLInputElement>('freeBase').value = state.base
+  }
+  if (sel) $('freeRadiusValue').textContent = `${Math.round(sel.radius)}%`
+  $<HTMLInputElement>('warp').checked = state.warp
+  $<HTMLInputElement>('lockFree').checked = state.lockBorder
 }
 
 // ---- panel: size --------------------------------------------------------------
@@ -384,18 +622,21 @@ function applyPalette(id: string) {
   state.paletteId = id
   state.palette = [...palette.colors]
   state.points = paletteLayout(palette) ?? randomPoints(state.palette, state.seed)
+  regenFree()
   onChange()
 }
 
 $('randomize').addEventListener('click', () => {
   state.seed = newSeed()
   state.points = randomPoints(state.palette, state.seed)
+  regenFree()
   onChange()
 })
 seedInput.addEventListener('change', () => {
   const seed = Math.max(0, Math.round(Number(seedInput.value) || 0))
   state.seed = seed
   state.points = randomPoints(state.palette, seed)
+  regenFree()
   onChange()
 })
 
@@ -451,6 +692,13 @@ function renderSwatches() {
 // ---- flip ---------------------------------------------------------------------
 
 function flip(horizontal: boolean) {
+  if (state.mode === 'free') {
+    state.handles = state.handles.map((h) =>
+      horizontal ? { ...h, x: 100 - h.x, x0: 100 - h.x0 } : { ...h, y: 100 - h.y, y0: 100 - h.y0 },
+    )
+    onChange({ palette: false })
+    return
+  }
   const old = state.points
   state.points = old.map((_, index) => {
     const col = index % 4
@@ -654,6 +902,9 @@ function renderGallery() {
         paletteId: palette.id,
         palette: [...palette.colors],
         points: paletteLayout(palette) ?? randomPoints(palette.colors, state.seed),
+        ...(state.mode === 'free'
+          ? { handles: randomHandles(palette.colors, state.seed), base: palette.colors[0] }
+          : {}),
       }
       return makeTile(palette.name, st, state.paletteId === palette.id, () =>
         applyPalette(palette.id),
@@ -820,7 +1071,9 @@ $<HTMLInputElement>('lock').addEventListener('change', (event) => {
   onChange()
 })
 $<HTMLInputElement>('showHandles').addEventListener('change', (event) => {
-  handlesEl.classList.toggle('hidden', !(event.target as HTMLInputElement).checked)
+  const show = (event.target as HTMLInputElement).checked
+  handlesEl.classList.toggle('hidden', !show)
+  freeHandlesEl.classList.toggle('hidden', !show)
 })
 
 const grainInput = $<HTMLInputElement>('grain')
@@ -949,12 +1202,26 @@ $('theme').addEventListener('click', () => {
 
 let hashTimer = 0
 function onChange(
-  opts: { palette?: boolean; sizeInputs?: boolean; pointInputs?: boolean; grainField?: boolean } = {},
+  opts: {
+    palette?: boolean
+    sizeInputs?: boolean
+    pointInputs?: boolean
+    grainField?: boolean
+    freeInputs?: boolean
+  } = {},
 ) {
-  const { palette = true, sizeInputs = true, pointInputs = true, grainField = true } = opts
+  const {
+    palette = true,
+    sizeInputs = true,
+    pointInputs = true,
+    grainField = true,
+    freeInputs = true,
+  } = opts
   syncSize(sizeInputs)
   fitFrame()
   syncHandles()
+  syncFreeHandles()
+  syncMode(freeInputs)
   syncPoint(pointInputs)
   if (palette) {
     renderGallery()

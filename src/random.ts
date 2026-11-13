@@ -1,6 +1,6 @@
 import type { Palette } from './palettes'
 import { GRID, POINT_COUNT } from './mesh/mesh'
-import type { PointState } from './state'
+import type { HandleState, PointState } from './state'
 
 /** Small seeded PRNG, so a seed always reproduces the same layout */
 export function mulberry32(seed: number) {
@@ -53,4 +53,26 @@ export function paletteLayout(palette: Palette): PointState[] | null {
     y,
     color: palette.colors[colorIndex] ?? palette.colors[0],
   }))
+}
+
+/** Experimental free mode: a handful of soft colour blobs, some slightly pulled away from their rest position */
+export function randomHandles(colors: string[], seed: number): HandleState[] {
+  const rand = mulberry32(seed + 7919)
+  const accents = colors.length > 1 ? colors.slice(1) : colors
+  const count = 6 + Math.floor(rand() * 4)
+  const handles: HandleState[] = []
+  for (let i = 0; i < count; i++) {
+    const x0 = 6 + rand() * 88
+    const y0 = 6 + rand() * 88
+    const pulled = rand() < 0.6
+    handles.push({
+      x0,
+      y0,
+      x: pulled ? Math.min(100, Math.max(0, x0 + (rand() * 2 - 1) * 12)) : x0,
+      y: pulled ? Math.min(100, Math.max(0, y0 + (rand() * 2 - 1) * 12)) : y0,
+      radius: 34 + rand() * 18,
+      color: accents[Math.floor(rand() * accents.length)] ?? '#888888',
+    })
+  }
+  return handles
 }
