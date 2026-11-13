@@ -69,7 +69,7 @@ select {
 }
 .app {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 340px minmax(0, 1fr) 320px;
   height: 100%;
 }
 .stage {
@@ -140,7 +140,7 @@ select {
 
 .panel {
   background: var(--panel);
-  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
   overflow-y: auto;
   padding: 0 16px 24px;
 }
@@ -326,16 +326,6 @@ select:focus-visible {
   color: var(--panel);
 }
 
-@media (max-width: 800px) {
-  .app {
-    grid-template-columns: 1fr;
-    grid-template-rows: 55vh 1fr;
-  }
-  .panel {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-}
 .status a { color: inherit; text-decoration: underline; }
 .preset { text-align: left; overflow: hidden; text-overflow: ellipsis; }
 .group-title {
@@ -397,14 +387,6 @@ select:focus-visible {
 .tile-del:focus-visible {
   display: block;
 }
-#gallery {
-  /* about 6 tiles (3 rows of 2), the rest scrolls */
-  max-height: 392px;
-  overflow-y: auto;
-  padding-right: 6px;
-  margin-right: -6px;
-  overscroll-behavior: contain;
-}
 
 .color-popover {
   position: absolute;
@@ -433,4 +415,124 @@ select:focus-visible {
 }
 .pop-swatch[aria-pressed='true'] {
   box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent);
+}
+
+/* ---- right column: Starter / Mine ---- */
+.side {
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.side-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+.tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: -1px;
+}
+.tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.side-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 16px 24px;
+}
+.group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 8px;
+}
+.group-head:first-child,
+.row + .group-head {
+  margin-top: 12px;
+}
+.group-head .group-title {
+  margin: 0;
+}
+button.small {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.divider {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 18px 0 4px;
+}
+.foot {
+  margin-top: 16px;
+}
+.foot button {
+  flex: 1;
+}
+.drawer-toggle,
+.drawer-close {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .app {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+  .side {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(340px, 92vw);
+    z-index: 20;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    box-shadow: -8px 0 32px rgb(0 0 0 / 0.25);
+  }
+  .side.open {
+    transform: none;
+  }
+  .drawer-toggle {
+    display: block;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+  .drawer-close {
+    display: block;
+  }
+}
+@media (max-width: 800px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 55vh 1fr;
+  }
+  .stage {
+    order: -2;
+  }
+  .panel {
+    border-right: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* tools left, preview centre, gradients right (stage comes first in the DOM) */
+.panel {
+  order: -1;
 }

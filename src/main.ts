@@ -34,6 +34,7 @@ app.innerHTML = `
       <div class="handles" id="handles"></div>
     </div>
     <div class="size-badge" id="badge"></div>
+    <button class="drawer-toggle" id="drawerToggle">Gradients</button>
   </div>
   <aside class="panel">
     <header>
@@ -50,17 +51,6 @@ app.innerHTML = `
         <input type="number" id="height" min="1" step="1" aria-label="Height in px" />
       </div>
       <p class="hint" id="sizeHint"></p>
-    </section>
-
-    <section>
-      <h2>Presets</h2>
-      <div id="gallery"></div>
-      <div class="row">
-        <input type="text" id="presetName" placeholder="Name for a new preset" maxlength="40" aria-label="Preset name" class="grow" />
-        <button id="savePreset">Save</button>
-      </div>
-      <div class="row"><button id="exportPresets" class="grow">Export my presets</button></div>
-      <p class="hint">My presets live in this browser only. Team presets come from the shared <code>presets.json</code>. Applying a preset keeps your size.</p>
     </section>
 
     <section>
@@ -134,6 +124,17 @@ app.innerHTML = `
       </div>
       <input type="file" id="file" accept="application/json,.json" hidden />
     </section>
+  </aside>
+  <aside class="side" id="side" aria-label="Gradients">
+    <div class="side-head">
+      <div class="tabs" id="tabs" role="tablist">
+        <button role="tab" data-tab="starter" aria-selected="true">Starter</button>
+        <button role="tab" data-tab="mine" aria-selected="false">Mine</button>
+      </div>
+      <button class="small drawer-close" id="drawerClose" aria-label="Close">×</button>
+    </div>
+    <div class="side-body" id="gallery"></div>
+    <input type="file" id="presetFile" accept="application/json,.json" hidden />
   </aside>
 </div>`
 
@@ -466,14 +467,22 @@ function flip(horizontal: boolean) {
 $('flipH').addEventListener('click', () => flip(true))
 $('flipV').addEventListener('click', () => flip(false))
 
-// ---- preset gallery -----------------------------------------------------------
+// ---- preset gallery (right column) --------------------------------------------
 
 interface Preset {
   name: string
   state: GradientState
 }
+interface ExportEntry {
+  name: string
+  state: GradientState
+  settings: ExportSettings
+}
 const PRESET_KEY = 'mgt-presets'
+const EXPORT_KEY = 'mgt-exports'
+const EXPORT_LOG_MAX = 20
 let sharedPresets: Preset[] = []
+let galleryTab: 'starter' | 'mine' = 'starter'
 
 function parsePresets(raw: unknown): Preset[] {
   if (!Array.isArray(raw)) return []
@@ -482,19 +491,53 @@ function parsePresets(raw: unknown): Preset[] {
     return st && typeof p.name === 'string' ? [{ name: p.name.slice(0, 40), state: st }] : []
   })
 }
-function loadPresets(): Preset[] {
+function parseExports(raw: unknown): ExportEntry[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((p: { name?: unknown; state?: unknown; settings?: Partial<ExportSettings> }) => {
+    const st = sanitizeState(p?.state)
+    if (!st || typeof p.name !== 'string') return []
+    const s = p.settings ?? {}
+    const settings: ExportSettings = {
+      format: s.format === 'webp' || s.format === 'png' ? s.format : 'jpeg',
+      quality: typeof s.quality === 'number' ? Math.min(1, Math.max(0.5, s.quality)) : 0.92,
+      scale: s.scale === 2 ? 2 : 1,
+    }
+    return [{ name: p.name.slice(0, 60), state: st, settings }]
+  })
+}
+function readStore(key: string): unknown {
   try {
-    return parsePresets(JSON.parse(localStorage.getItem(PRESET_KEY) ?? '[]'))
+    return JSON.parse(localStorage.getItem(key) ?? '[]')
   } catch {
     return []
   }
 }
-function storePresets(list: Preset[]) {
+function writeStore(key: string, value: unknown) {
   try {
-    localStorage.setItem(PRESET_KEY, JSON.stringify(list))
+    localStorage.setItem(key, JSON.stringify(value))
   } catch {
     setStatus('Could not save: browser storage is blocked.', 'err')
   }
+}
+const loadPresets = () => parsePresets(readStore(PRESET_KEY))
+const loadExports = () => parseExports(readStore(EXPORT_KEY))
+
+/** Newest first, capped; called after every successful export */
+function logExport(width: number, height: number) {
+  const stamp = new Date().toLocaleString([], {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  const label = `${width}×${height} ${exportSettings.format === 'jpeg' ? 'JPG' : exportSettings.format.toUpperCase()}`
+  const entry: ExportEntry = {
+    name: `${label} · ${stamp}`,
+    state: structuredClone(state),
+    settings: { ...exportSettings },
+  }
+  writeStore(EXPORT_KEY, [entry, ...loadExports()].slice(0, EXPORT_LOG_MAX))
+  renderGallery()
 }
 
 // One small offscreen renderer draws all thumbnails
@@ -519,10 +562,20 @@ function drawThumb(target: HTMLCanvasElement, st: GradientState) {
   target.getContext('2d')!.drawImage(thumbGl, 0, 0)
 }
 
+/** Presets keep the current output size */
 function applyPresetState(preset: GradientState) {
   const { width, height } = state
   state = { ...structuredClone(preset), width, height }
   selected = 0
+  onChange()
+}
+
+/** An exported entry brings back its size and export settings too */
+function applyExportEntry(entry: ExportEntry) {
+  state = structuredClone(entry.state)
+  exportSettings = { ...entry.settings }
+  selected = 0
+  syncExport()
   onChange()
 }
 
@@ -550,8 +603,8 @@ function makeTile(
     const del = document.createElement('button')
     del.className = 'tile-del'
     del.textContent = '×'
-    del.title = 'Delete preset'
-    del.setAttribute('aria-label', `Delete preset ${name}`)
+    del.title = 'Delete'
+    del.setAttribute('aria-label', `Delete ${name}`)
     del.addEventListener('click', remove)
     tile.appendChild(del)
   }
@@ -559,27 +612,43 @@ function makeTile(
 }
 
 function renderGallery() {
+  for (const tab of document.querySelectorAll<HTMLElement>('#tabs [data-tab]')) {
+    tab.setAttribute('aria-selected', String(tab.dataset.tab === galleryTab))
+  }
   const root = $('gallery')
   root.innerHTML = ''
-  const group = (title: string, tiles: HTMLElement[], empty = '') => {
-    const heading = document.createElement('div')
+
+  const group = (title: string, tiles: HTMLElement[], empty: string, action?: HTMLElement) => {
+    const head = document.createElement('div')
+    head.className = 'group-head'
+    const heading = document.createElement('span')
     heading.className = 'group-title'
     heading.textContent = title
-    const grid = document.createElement('div')
-    grid.className = 'gallery'
-    grid.append(...tiles)
-    root.append(heading, grid)
-    if (!tiles.length && empty) {
+    head.appendChild(heading)
+    if (action) head.appendChild(action)
+    root.appendChild(head)
+    if (tiles.length) {
+      const grid = document.createElement('div')
+      grid.className = 'gallery'
+      grid.append(...tiles)
+      root.appendChild(grid)
+    } else {
       const note = document.createElement('p')
       note.className = 'hint'
       note.textContent = empty
       root.appendChild(note)
     }
   }
+  const smallButton = (label: string, onClick: () => void) => {
+    const b = document.createElement('button')
+    b.className = 'small'
+    b.textContent = label
+    b.addEventListener('click', onClick)
+    return b
+  }
 
-  group(
-    'Palettes',
-    PALETTES.map((palette) => {
+  if (galleryTab === 'starter') {
+    const tiles = PALETTES.map((palette) => {
       const st: GradientState = {
         ...state,
         paletteId: palette.id,
@@ -589,51 +658,123 @@ function renderGallery() {
       return makeTile(palette.name, st, state.paletteId === palette.id, () =>
         applyPalette(palette.id),
       )
-    }),
-  )
-  if (sharedPresets.length) {
-    group(
-      'Team presets',
-      sharedPresets.map((p) => makeTile(p.name, p.state, false, () => applyPresetState(p.state))),
-    )
+    })
+    for (const p of sharedPresets) {
+      tiles.push(makeTile(p.name, p.state, false, () => applyPresetState(p.state)))
+    }
+    group('Starter gradients', tiles, '')
+    const note = document.createElement('p')
+    note.className = 'hint'
+    note.textContent = 'Click one to use it as a starting point. Your output size stays as it is.'
+    root.appendChild(note)
+    return
   }
-  const mine = loadPresets()
+
+  // Mine: saved presets on top, a divider, then the export log
+  const saveRow = document.createElement('div')
+  saveRow.className = 'row'
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.placeholder = 'Name for the current gradient'
+  input.maxLength = 40
+  input.className = 'grow'
+  input.setAttribute('aria-label', 'Preset name')
+  const save = document.createElement('button')
+  save.textContent = 'Save'
+  const doSave = () => {
+    const name = input.value.trim() || `Preset ${loadPresets().length + 1}`
+    const list = loadPresets().filter((p) => p.name !== name)
+    list.push({ name, state: structuredClone(state) })
+    writeStore(PRESET_KEY, list)
+    renderGallery()
+    setStatus(`Saved "${name}".`, 'ok')
+  }
+  save.addEventListener('click', doSave)
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') doSave()
+  })
+  saveRow.append(input, save)
+  root.appendChild(saveRow)
+
+  const saved = loadPresets()
   group(
-    'My presets',
-    mine.map((p, index) =>
-      makeTile(
-        p.name,
-        p.state,
-        false,
-        () => applyPresetState(p.state),
-        () => {
-          storePresets(loadPresets().filter((_, i) => i !== index))
-          renderGallery()
-        },
-      ),
+    'Saved',
+    saved.map((p, index) =>
+      makeTile(p.name, p.state, false, () => applyPresetState(p.state), () => {
+        writeStore(PRESET_KEY, loadPresets().filter((_, i) => i !== index))
+        renderGallery()
+      }),
     ),
-    'Nothing saved yet.',
+    'Nothing saved yet. Name the current gradient above and press Save.',
   )
+
+  const divider = document.createElement('hr')
+  divider.className = 'divider'
+  root.appendChild(divider)
+
+  const exported = loadExports()
+  group(
+    `Exported (last ${EXPORT_LOG_MAX})`,
+    exported.map((e, index) =>
+      makeTile(e.name, e.state, false, () => applyExportEntry(e), () => {
+        writeStore(EXPORT_KEY, loadExports().filter((_, i) => i !== index))
+        renderGallery()
+      }),
+    ),
+    'Every export is logged here, with its size and format.',
+    exported.length
+      ? smallButton('Clear', () => {
+          writeStore(EXPORT_KEY, [])
+          renderGallery()
+        })
+      : undefined,
+  )
+
+  const foot = document.createElement('div')
+  foot.className = 'row foot'
+  foot.append(
+    smallButton('Export saved as file', () => {
+      const list = loadPresets()
+      if (!list.length) return setStatus('You have no saved gradients to export yet.', 'err')
+      const data = { presets: list.map((p) => ({ name: p.name, gradient: p.state })) }
+      download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), 'presets.json')
+      setStatus('Exported. To share with the team, merge the entries into public/presets.json.', 'ok')
+    }),
+    smallButton('Import file', () => $<HTMLInputElement>('presetFile').click()),
+  )
+  root.appendChild(foot)
 }
 
-$('savePreset').addEventListener('click', () => {
-  const input = $<HTMLInputElement>('presetName')
-  const name = input.value.trim() || `Preset ${loadPresets().length + 1}`
-  const list = loadPresets().filter((p) => p.name !== name)
-  list.push({ name, state: structuredClone(state) })
-  storePresets(list)
-  input.value = ''
+$('tabs').addEventListener('click', (event) => {
+  const tab = (event.target as HTMLElement).closest<HTMLElement>('[data-tab]')
+  if (!tab) return
+  galleryTab = tab.dataset.tab === 'mine' ? 'mine' : 'starter'
   renderGallery()
-  setStatus(`Saved preset "${name}".`, 'ok')
 })
 
-$('exportPresets').addEventListener('click', () => {
-  const mine = loadPresets()
-  if (!mine.length) return setStatus('You have no saved presets to export yet.', 'err')
-  const data = { presets: mine.map((p) => ({ name: p.name, gradient: p.state })) }
-  download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), 'presets.json')
-  setStatus('Exported. To share with the team, merge the entries into public/presets.json.', 'ok')
+$<HTMLInputElement>('presetFile').addEventListener('change', async (event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  try {
+    const data = JSON.parse(await file.text()) as { presets?: unknown }
+    const incoming = parsePresets(Array.isArray(data) ? data : data.presets)
+    if (!incoming.length) return setStatus('No gradients found in that file.', 'err')
+    const names = new Set(incoming.map((p) => p.name))
+    writeStore(PRESET_KEY, [...loadPresets().filter((p) => !names.has(p.name)), ...incoming])
+    galleryTab = 'mine'
+    renderGallery()
+    setStatus(`Imported ${incoming.length} gradient${incoming.length === 1 ? '' : 's'}.`, 'ok')
+  } catch {
+    setStatus('That file is not a valid presets file.', 'err')
+  }
 })
+
+// Narrow windows: the right column becomes a drawer
+const sideEl = $('side')
+$('drawerToggle').addEventListener('click', () => sideEl.classList.toggle('open'))
+$('drawerClose').addEventListener('click', () => sideEl.classList.remove('open'))
 
 fetch(`${import.meta.env.BASE_URL}presets.json`)
   .then((r) => (r.ok ? r.json() : null))
@@ -745,6 +886,7 @@ $('export').addEventListener('click', async () => {
     const name = `mesh-gradient-${width}x${height}-${state.seed}.${EXTENSION[exportSettings.format]}`
     download(blob, name)
     showResult(blob, name)
+    logExport(width, height)
   } catch (error) {
     setStatus((error as Error).message, 'err')
   } finally {
