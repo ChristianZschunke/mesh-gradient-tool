@@ -420,13 +420,20 @@ function createFreeButton(i: number) {
       event.preventDefault()
       selectFree(i)
       button.setPointerCapture(event.pointerId)
-      const resize = (e: PointerEvent) => {
+      // Relative: the radius changes by how much the pointer moves toward or away from the
+      // handle, starting from the current radius
+      const startRadius = state.handles[i].radius
+      const distance = (e: PointerEvent) => {
         const h = state.handles[i]
         const rect = frame.getBoundingClientRect()
         const cx = rect.left + (h.x / 100) * rect.width
         const cy = rect.top + (h.y / 100) * rect.height
-        const radius = (Math.hypot(e.clientX - cx, e.clientY - cy) / rect.height) * 100
-        h.radius = Math.round(Math.min(90, Math.max(4, radius)) * 10) / 10
+        return (Math.hypot(e.clientX - cx, e.clientY - cy) / rect.height) * 100
+      }
+      const startDistance = distance(event)
+      const resize = (e: PointerEvent) => {
+        const radius = startRadius + distance(e) - startDistance
+        state.handles[i].radius = Math.round(Math.min(90, Math.max(4, radius)) * 10) / 10
         onChange({ palette: false })
       }
       const end = () => {
