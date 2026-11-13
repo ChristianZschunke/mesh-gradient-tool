@@ -78,7 +78,7 @@ app.innerHTML = `
         <label><input type="checkbox" id="warp" /> Dragging also warps the surface</label>
         <label><input type="checkbox" id="lockFree" /> Lock border</label>
       </div>
-      <p class="hint">Double-click empty space to add a handle, right-click a handle to remove it, double-click a handle to pick a palette colour. Middle-drag a handle to change its radius of influence (the ring).</p>
+      <p class="hint">Double-click empty space to add a handle, right-click a handle to remove it, double-click a handle to pick a palette colour. Middle-drag a handle to change its radius of influence: pointer right of the handle grows it, left shrinks it.</p>
     </section>
 
     <section>
@@ -416,23 +416,22 @@ function createFreeButton(i: number) {
   })
   button.addEventListener('pointerdown', (event) => {
     if (event.button === 1) {
-      // Middle-drag resizes the radius: the ring follows the pointer
+      // Middle-drag resizes the radius of influence
       event.preventDefault()
       selectFree(i)
       button.setPointerCapture(event.pointerId)
-      // Relative: the radius changes by how much the pointer moves toward or away from the
-      // handle, starting from the current radius
+      // Horizontal and signed: pointer right of the handle grows the radius, left of it shrinks
+      // it, counted from the radius at the start of the drag
       const startRadius = state.handles[i].radius
-      const distance = (e: PointerEvent) => {
+      const offset = (e: PointerEvent) => {
         const h = state.handles[i]
         const rect = frame.getBoundingClientRect()
-        const cx = rect.left + (h.x / 100) * rect.width
-        const cy = rect.top + (h.y / 100) * rect.height
-        return (Math.hypot(e.clientX - cx, e.clientY - cy) / rect.height) * 100
+        const handleX = rect.left + (h.x / 100) * rect.width
+        return ((e.clientX - handleX) / rect.height) * 100
       }
-      const startDistance = distance(event)
+      const startOffset = offset(event)
       const resize = (e: PointerEvent) => {
-        const radius = startRadius + distance(e) - startDistance
+        const radius = startRadius + offset(e) - startOffset
         state.handles[i].radius = Math.round(Math.min(90, Math.max(4, radius)) * 10) / 10
         onChange({ palette: false })
       }
