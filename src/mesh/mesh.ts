@@ -139,7 +139,7 @@ export interface FreeParams {
   base: RGB
   /** Border vertices stay on the border */
   lockBorder: boolean
-  /** Relaxation iterations over the displacement field (0 = off) */
+  /** Blur size of the displacement field, 0.5 steps up to 35 (0 = off) */
   relax: number
   grain: number
   seed: number
@@ -223,7 +223,7 @@ export function computeDisplacementField(
   handles: FreeHandle[],
   aspect: number,
   lockBorder: boolean,
-  iterations: number,
+  amount: number,
 ): Float32Array {
   const side = TESSELLATION + 1
   const count = side * side
@@ -261,18 +261,22 @@ export function computeDisplacementField(
     }
   }
   pin()
-  // Three passes of a separable box blur approximate a Gaussian. The window radius grows
-  // with `iterations` (the "Amount"), counted in grid cells; edges repeat their last value.
-  const radius = Math.round(iterations / 2)
-  if (radius > 0) {
+  // Three passes of a separable box blur approximate a Gaussian. The window radius is
+  // amount / 2 grid cells (it may be fractional: the outermost samples then count partly);
+  // edges repeat their last value.
+  const exact = amount / 2
+  if (exact > 0) {
+    const r = Math.floor(exact)
+    const f = exact - r
+    const width = 2 * r + 1 + 2 * f
     const line = new Float32Array(side)
+    const at = (i: number) => Math.min(Math.max(i, 0), side - 1)
     const blurLine = (get: (i: number) => number, set: (i: number, v: number) => void) => {
-      const width = 2 * radius + 1
       let sum = 0
-      for (let k = -radius; k <= radius; k++) sum += get(Math.min(Math.max(k, 0), side - 1))
+      for (let k = -r; k <= r; k++) sum += get(at(k))
       for (let i = 0; i < side; i++) {
-        line[i] = sum / width
-        sum += get(Math.min(i + radius + 1, side - 1)) - get(Math.max(i - radius, 0))
+        line[i] = (sum + f * (get(at(i - r - 1)) + get(at(i + r + 1)))) / width
+        sum += get(at(i + r + 1)) - get(at(i - r))
       }
       for (let i = 0; i < side; i++) set(i, line[i])
     }
@@ -449,7 +453,7 @@ export class MeshRenderer {
           handles,
           this.canvas.width / this.canvas.height,
           params.lockBorder,
-          Math.round(params.relax),
+          params.relax,
         )
         if (!this.dispTexture) {
           this.dispTexture = gl.createTexture()

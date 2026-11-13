@@ -137,7 +137,7 @@ export function sanitizeState(input: unknown): GradientState | null {
     base: baseColor ?? (palette[0] ?? points[0].color),
     warp: raw.warp !== false,
     relax: raw.relax === true,
-    relaxAmount: Math.round(num(raw.relaxAmount, 24, 1, 60)),
+    relaxAmount: Math.round(num(raw.relaxAmount, 24, 0.5, 35) * 2) / 2,
     width: Math.round(num(raw.width, 1920, 1, 32768)),
     height: Math.round(num(raw.height, 1080, 1, 32768)),
     seed: Math.round(num(raw.seed, 0, 0, 4294967295)),
