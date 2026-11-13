@@ -139,6 +139,8 @@ export interface FreeParams {
   base: RGB
   /** Border vertices stay on the border */
   lockBorder: boolean
+  /** Relaxation iterations over the displacement field (0 = off) */
+  relax: number
   grain: number
   seed: number
 }
@@ -155,6 +157,8 @@ uniform int uCount;
 uniform float uAspect;
 uniform vec3 uBase;
 uniform float uLock;
+uniform int uRelax; // 1: take the displacement from the relaxed field texture
+uniform sampler2D uDisp;
 in vec2 a;
 out vec4 vColor;
 void main() {
@@ -171,7 +175,11 @@ void main() {
     acc += w * HC[i].rgb;
     ws += w;
   }
-  disp /= max(1., ws);
+  if (uRelax > 0) {
+    disp = texelFetch(uDisp, ivec2(a * ${TESSELLATION}. + .5), 0).rg;
+  } else {
+    disp /= max(1., ws);
+  }
   vec3 col = ws < 1. ? acc + (1. - ws) * uBase : acc / ws;
   vec2 pos = a + disp;
   if (uLock > .5) {
@@ -207,6 +215,88 @@ export function getMeshLimits(): MeshLimits | null {
   return (cachedLimits = { maxSide })
 }
 
+/**
+ * The displacement of the free-mode surface on the vertex grid, optionally relaxed:
+ * a wide blur of the displacement field evens out stretching where influence areas overlap.
+ */
+export function computeDisplacementField(
+  handles: FreeHandle[],
+  aspect: number,
+  lockBorder: boolean,
+  iterations: number,
+): Float32Array {
+  const side = TESSELLATION + 1
+  const count = side * side
+  let field = new Float32Array(count * 2)
+  const list = handles.slice(0, MAX_FREE_HANDLES)
+  for (let row = 0; row < side; row++) {
+    for (let col = 0; col < side; col++) {
+      const ax = col / TESSELLATION
+      const ay = row / TESSELLATION
+      let dx = 0
+      let dy = 0
+      let ws = 0
+      for (const h of list) {
+        const radius = Math.max(h.radius, 0.5) / 100
+        const d = Math.hypot((ax - h.x0 / 100) * aspect, ay - h.y0 / 100)
+        const t = Math.min(1, Math.max(0, 1 - d / radius))
+        const w = t * t * (3 - 2 * t)
+        dx += w * (h.x - h.x0) / 100
+        dy += w * (h.y - h.y0) / 100
+        ws += w
+      }
+      const k = 1 / Math.max(1, ws)
+      field[(row * side + col) * 2] = dx * k
+      field[(row * side + col) * 2 + 1] = dy * k
+    }
+  }
+  const pin = () => {
+    if (!lockBorder) return
+    for (let i = 0; i < side; i++) {
+      // left/right edge: no sideways displacement, top/bottom edge: no vertical one
+      field[(i * side) * 2] = 0
+      field[(i * side + side - 1) * 2] = 0
+      field[i * 2 + 1] = 0
+      field[((side - 1) * side + i) * 2 + 1] = 0
+    }
+  }
+  pin()
+  // Three passes of a separable box blur approximate a Gaussian. The window radius grows
+  // with `iterations` (the "Amount"), counted in grid cells; edges repeat their last value.
+  const radius = Math.round(iterations / 2)
+  if (radius > 0) {
+    const line = new Float32Array(side)
+    const blurLine = (get: (i: number) => number, set: (i: number, v: number) => void) => {
+      const width = 2 * radius + 1
+      let sum = 0
+      for (let k = -radius; k <= radius; k++) sum += get(Math.min(Math.max(k, 0), side - 1))
+      for (let i = 0; i < side; i++) {
+        line[i] = sum / width
+        sum += get(Math.min(i + radius + 1, side - 1)) - get(Math.max(i - radius, 0))
+      }
+      for (let i = 0; i < side; i++) set(i, line[i])
+    }
+    for (let pass = 0; pass < 3; pass++) {
+      for (let c = 0; c < 2; c++) {
+        for (let row = 0; row < side; row++) {
+          blurLine(
+            (i) => field[(row * side + i) * 2 + c],
+            (i, v) => (field[(row * side + i) * 2 + c] = v),
+          )
+        }
+        for (let col = 0; col < side; col++) {
+          blurLine(
+            (i) => field[(i * side + col) * 2 + c],
+            (i, v) => (field[(i * side + col) * 2 + c] = v),
+          )
+        }
+      }
+    }
+    pin()
+  }
+  return field
+}
+
 interface Loc {
   program: WebGLProgram
   grain: WebGLUniformLocation | null
@@ -218,6 +308,7 @@ export class MeshRenderer {
   private uniforms = new Float32Array(128)
   private mesh: Loc | null = null
   private free: Loc | null = null
+  private dispTexture: WebGLTexture | null = null
   private indexCount = 0
   private ready = false
   private lost = false
@@ -231,6 +322,7 @@ export class MeshRenderer {
     this.lost = false
     try {
       this.free = null
+      this.dispTexture = null
       this.init()
       this.options.onRestore?.()
     } catch (error) {
@@ -324,6 +416,8 @@ export class MeshRenderer {
         'uAspect',
         'uBase',
         'uLock',
+        'uRelax',
+        'uDisp',
       ])
       gl.useProgram(program.program)
       const handles = params.handles.slice(0, MAX_FREE_HANDLES)
@@ -347,6 +441,27 @@ export class MeshRenderer {
         toLinear(params.base[2]),
       )
       gl.uniform1f(program.uLock as WebGLUniformLocation, params.lockBorder ? 1 : 0)
+      const relaxed = params.relax > 0
+      gl.uniform1i(program.uRelax as WebGLUniformLocation, relaxed ? 1 : 0)
+      if (relaxed) {
+        const side = TESSELLATION + 1
+        const field = computeDisplacementField(
+          handles,
+          this.canvas.width / this.canvas.height,
+          params.lockBorder,
+          Math.round(params.relax),
+        )
+        if (!this.dispTexture) {
+          this.dispTexture = gl.createTexture()
+          gl.bindTexture(gl.TEXTURE_2D, this.dispTexture)
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+        }
+        gl.activeTexture(gl.TEXTURE0)
+        gl.bindTexture(gl.TEXTURE_2D, this.dispTexture)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, side, side, 0, gl.RG, gl.FLOAT, field)
+        gl.uniform1i(program.uDisp as WebGLUniformLocation, 0)
+      }
       gl.clearColor(params.base[0], params.base[1], params.base[2], 1)
     } else {
       program = this.mesh!

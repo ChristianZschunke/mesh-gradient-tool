@@ -29,6 +29,9 @@ export interface GradientState {
   base: string
   /** Free mode: dragging a handle also warps the surface (off: colour blobs only) */
   warp: boolean
+  /** Free mode: smooth stretching by relaxing the displacement field */
+  relax: boolean
+  relaxAmount: number
   width: number
   height: number
   seed: number
@@ -66,6 +69,8 @@ export function defaultState(): GradientState {
     handles: [],
     base: palette.colors[0],
     warp: true,
+    relax: false,
+    relaxAmount: 24,
     width: 1920,
     height: 1080,
     seed: 2024,
@@ -131,6 +136,8 @@ export function sanitizeState(input: unknown): GradientState | null {
     handles,
     base: baseColor ?? (palette[0] ?? points[0].color),
     warp: raw.warp !== false,
+    relax: raw.relax === true,
+    relaxAmount: Math.round(num(raw.relaxAmount, 24, 1, 60)),
     width: Math.round(num(raw.width, 1920, 1, 32768)),
     height: Math.round(num(raw.height, 1080, 1, 32768)),
     seed: Math.round(num(raw.seed, 0, 0, 4294967295)),
@@ -175,6 +182,8 @@ export function encodeHash(state: GradientState): string {
       state.handles.map((h) => [round(h.x0), round(h.y0), round(h.x), round(h.y), round(h.radius), h.color.slice(1)]),
       state.base.slice(1),
       state.warp ? 1 : 0,
+      state.relax ? 1 : 0,
+      state.relaxAmount,
     )
   }
   return 'g=' + toBase64Url(JSON.stringify(compact))
@@ -199,6 +208,8 @@ export function decodeHash(hash: string): GradientState | null {
       handles: c[8] === 1 ? (c[9] as unknown[][]).map((h) => ({ x0: h[0], y0: h[1], x: h[2], y: h[3], radius: h[4], color: '#' + h[5] })) : [],
       base: c[8] === 1 ? '#' + (c[10] as string) : undefined,
       warp: c[8] === 1 ? c[11] === 1 : true,
+      relax: c[8] === 1 ? c[12] === 1 : false,
+      relaxAmount: c[8] === 1 ? c[13] : 24,
     })
   } catch {
     return null
