@@ -30,7 +30,7 @@ The preview is rendered at the export size up to 2048 px on the long side; large
 
 ## Free mode (experimental)
 
-Switch *Mode* to *Free (experimental)* for a different way to build gradients: handles at arbitrary positions on a tessellated plane. Each handle has a colour, a radius of influence (the dashed ring) and a rest position. Vertices inside the radius take the handle's colour and, when you drag the handle, follow it with a smooth falloff (like proportional editing in 3D software). Double-click empty space to add a handle (it starts with the colour currently shown there), right-click a handle to remove it, double-click a handle to pick a palette colour. *Dragging also warps the surface* off gives plain colour blobs without distortion. Large pulls can fold the surface over itself.
+Switch *Mode* to *Free (experimental)* for a different way to build gradients: handles at arbitrary positions on a tessellated plane. Each handle has a colour, a radius of influence (the dashed ring) and a rest position. Vertices inside the radius take the handle's colour and, when you drag the handle, follow it with a smooth falloff (like proportional editing in 3D software). Double-click empty space to add a handle (it starts with the colour currently shown there), right-click a handle to remove it, double-click a handle to pick a palette colour, middle-drag a handle to resize its radius (the ring follows the handle). *Dragging also warps the surface* off gives plain colour blobs without distortion. Large pulls can fold the surface over itself.
 
 Free-mode gradients are saved in links, JSON files, presets and the export log like mesh ones; opening one switches the mode. The Starter gradients are mesh-mode.
 

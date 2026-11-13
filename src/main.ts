@@ -78,7 +78,7 @@ app.innerHTML = `
         <label><input type="checkbox" id="warp" /> Dragging also warps the surface</label>
         <label><input type="checkbox" id="lockFree" /> Lock border</label>
       </div>
-      <p class="hint">Double-click empty space to add a handle, right-click a handle to remove it, double-click a handle to pick a palette colour. The ring shows the radius of influence.</p>
+      <p class="hint">Double-click empty space to add a handle, right-click a handle to remove it, double-click a handle to pick a palette colour. Middle-drag a handle to change its radius of influence (the ring).</p>
     </section>
 
     <section>
@@ -410,7 +410,35 @@ function createFreeButton(i: number) {
   const button = document.createElement('button')
   button.className = 'handle free'
   button.setAttribute('aria-label', `Free handle ${i + 1}`)
+  // Middle button: stop the browser's autoscroll
+  button.addEventListener('mousedown', (event) => {
+    if (event.button === 1) event.preventDefault()
+  })
   button.addEventListener('pointerdown', (event) => {
+    if (event.button === 1) {
+      // Middle-drag resizes the radius: the ring follows the pointer
+      event.preventDefault()
+      selectFree(i)
+      button.setPointerCapture(event.pointerId)
+      const resize = (e: PointerEvent) => {
+        const h = state.handles[i]
+        const rect = frame.getBoundingClientRect()
+        const cx = rect.left + (h.x / 100) * rect.width
+        const cy = rect.top + (h.y / 100) * rect.height
+        const radius = (Math.hypot(e.clientX - cx, e.clientY - cy) / rect.height) * 100
+        h.radius = Math.round(Math.min(90, Math.max(4, radius)) * 10) / 10
+        onChange({ palette: false })
+      }
+      const end = () => {
+        button.removeEventListener('pointermove', resize)
+        button.removeEventListener('pointerup', end)
+        button.removeEventListener('pointercancel', end)
+      }
+      button.addEventListener('pointermove', resize)
+      button.addEventListener('pointerup', end)
+      button.addEventListener('pointercancel', end)
+      return
+    }
     if (event.button !== 0) return
     event.preventDefault()
     selectFree(i)
@@ -492,8 +520,9 @@ function syncFreeHandles() {
   const sel = state.handles[selectedFree]
   freeRing.style.display = state.mode === 'free' && sel ? 'block' : 'none'
   if (sel) {
-    freeRing.style.left = `${sel.x0}%`
-    freeRing.style.top = `${sel.y0}%`
+    // The influenced area travels with the handle, so the ring sits on the current position
+    freeRing.style.left = `${sel.x}%`
+    freeRing.style.top = `${sel.y}%`
     freeRing.style.height = `${sel.radius * 2}%`
   }
 }
