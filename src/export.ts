@@ -15,6 +15,7 @@ export function toMeshParams(state: GradientState): RenderParams {
       handles: state.handles.map((h) => ({ ...h, color: hexToRgb(h.color) })),
       base: hexToRgb(state.base),
       lockBorder: state.lockBorder,
+      relax: state.relax ? state.relaxAmount : 0,
       grain: state.grain,
       seed: state.seed,
     }
