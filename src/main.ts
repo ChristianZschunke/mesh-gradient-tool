@@ -864,10 +864,31 @@ function drawThumb(target: HTMLCanvasElement, st: GradientState) {
   target.getContext('2d')!.drawImage(thumbGl, 0, 0)
 }
 
+/** A gradient's identity, ignoring output size (presets keep the current size) */
+const stateSig = (st: GradientState) => JSON.stringify({ ...st, width: 0, height: 0 })
+let activePreset: { name: string; sig: string } | null = null
+
+/** Name of the preset/starter the current gradient still matches, else null */
+function currentPresetName(): string | null {
+  if (activePreset && activePreset.sig === stateSig(state)) return activePreset.name
+  return PALETTES.find((p) => p.id === state.paletteId)?.name ?? null
+}
+
+/** Safe for filenames: lowercase, dashes, no odd characters */
+const slug = (s: string) =>
+  s
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+
 /** Presets keep the current output size */
-function applyPresetState(preset: GradientState) {
+function applyPresetState(preset: GradientState, name?: string) {
   const { width, height } = state
   state = { ...structuredClone(preset), width, height }
+  activePreset = name ? { name, sig: stateSig(state) } : null
   selected = 0
   onChange()
 }
@@ -965,7 +986,7 @@ function renderGallery() {
       )
     })
     for (const p of sharedPresets) {
-      tiles.push(makeTile(p.name, p.state, false, () => applyPresetState(p.state)))
+      tiles.push(makeTile(p.name, p.state, false, () => applyPresetState(p.state, p.name)))
     }
     group('Starter gradients', tiles, '')
     const note = document.createElement('p')
@@ -1005,7 +1026,7 @@ function renderGallery() {
   group(
     'Saved',
     saved.map((p, index) =>
-      makeTile(p.name, p.state, false, () => applyPresetState(p.state), () => {
+      makeTile(p.name, p.state, false, () => applyPresetState(p.state, p.name), () => {
         writeStore(PRESET_KEY, loadPresets().filter((_, i) => i !== index))
         renderGallery()
       }),
@@ -1190,7 +1211,8 @@ $('export').addEventListener('click', async () => {
     // let the status paint before the (blocking) render
     await new Promise((r) => setTimeout(r, 30))
     const { blob, width, height } = await renderToBlob(state, exportSettings)
-    const name = `mesh-gradient-${width}x${height}-${state.seed}.${EXTENSION[exportSettings.format]}`
+    const presetSlug = slug(currentPresetName() ?? '')
+    const name = `mesh-gradient${presetSlug ? `-${presetSlug}` : ''}-${width}x${height}-${state.seed}.${EXTENSION[exportSettings.format]}`
     download(blob, name)
     showResult(blob, name)
     logExport(width, height)
